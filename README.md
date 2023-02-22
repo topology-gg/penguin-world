@@ -1,9 +1,10 @@
-cd client
-npm i
-npm run start
 
+<b>Running</b>
+```
+cd client && npm i && IS_INITIATOR=TRUE npm run start
+```
 
-For M1 MAC USERS
+<b>For M1 MAC USERS</b>
 
 node-webrtc currently is inoperable with M1 Macs so we will need to ...
 
