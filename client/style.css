@@ -1,0 +1,14 @@
+.connection {
+    border-top: 1px solid black;
+    margin-top: 10px;
+    width: fit-content;
+}
+
+.btn{
+    margin-top: 10px;
+}
+
+.closeBtn{
+    float: right;
+    margin-top: 5px;
+}

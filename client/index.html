@@ -1,23 +1,70 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8">
+    <meta charset="utf-8" />
     <title></title>
     <script src="preload.js" charset="utf-8"></script>
+    <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    Welcome to esotere! <br />Please enter your username.
+    <form id="username-form">
+      <label for="username">Username:</label><br />
+      <input type="text" id="username-field" name="username" value="" /><br />
+      <input type="submit" id="username-submit-btn" value="Submit" />
+    </form>
 
-    <label>Your ID:</label><br/>
-    <textarea id="yourId"></textarea><br/>
-    <label>Other ID:</label><br/>
-    <textarea id="otherId"></textarea>
-    <button id="connect">connect</button><br/>
+    <input
+      type="submit"
+      id="init-connection"
+      value="+ Initialize Connection"
+      class="btn"
+      disabled
+    />
+    <input
+      type="submit"
+      id="respond-connection"
+      value="+ Respond to Connection Request"
+      class="btn"
+      disabled
+    />
 
-    <label>Enter Message:</label><br/>
-    <textarea id="yourMessage"></textarea>
-    <button id="send">send</button>
+    <div id="connections"></div>
+
+    <input
+      type="submit"
+      id="finish-signaling"
+      value="Done connecting"
+      class="btn"
+      disabled
+    />
+
+    <template id="connection-initiator-template">
+      <div id="connection-instance" class="connection">
+        <label>Your ID:</label><br />
+        <textarea id="yourId"></textarea><br />
+        <label>Other ID:</label><br />
+        <textarea id="otherId"></textarea><br />
+        <button id="connect">connect</button><br />
+      </div>
+    </template>
+
+    <template id="connection-template">
+      <div id="connection-instance" class="connection">
+        <label>Other ID:</label><br />
+        <textarea id="otherId"></textarea><br />
+        <label>Your ID:</label><br />
+        <textarea id="yourId"></textarea><br />
+        <button id="connect">connect</button><br />
+      </div>
+    </template>
+
     <pre id="messages"></pre>
-
+    <label>Enter Message:</label><br />
+    <textarea id="yourMessage" disabled></textarea>
+    <div>
+      <button id="send" disabled>send</button>
+    </div>
     
   </body>
 </html>
