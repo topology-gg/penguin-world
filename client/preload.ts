@@ -41,9 +41,9 @@ window.addEventListener("DOMContentLoaded", () => {
   function initializePeer(is_initiator) {
 
     // wrtc.getUser
-    wrtc
+    navigator.mediaDevices
       .getUserMedia({
-        video: true,
+        video: false,
         audio: true,
       })
       .then((stream : MediaStream) => {
@@ -51,7 +51,6 @@ window.addEventListener("DOMContentLoaded", () => {
         var peer = new Peer({
           initiator: is_initiator,
           trickle: false,
-          wrtc : wrtc,
           stream : stream
         });
 
@@ -68,10 +67,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
           // We attach our stream to srcObject of a rendered html video element
           //   Working example and source code https://webrtc.github.io/samples/src/content/getusermedia/gum/
-          var video = document.getElementById("video") as HTMLVideoElement; 
+          var video = document.getElementById("audio") as HTMLVideoElement; 
           
           video.srcObject = stream;
-          video.src = URL.createObjectURL(stream)
+          //video.src = URL.createObjectURL(stream)
           video.play();
 
 
