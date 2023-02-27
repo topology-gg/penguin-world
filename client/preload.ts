@@ -38,8 +38,7 @@ window.addEventListener("DOMContentLoaded", () => {
   **/
 
   function initializePeer(is_initiator) {
-
-    // wrtc.getUser
+    
     navigator.mediaDevices
       .getUserMedia({
         video: false,
@@ -47,6 +46,7 @@ window.addEventListener("DOMContentLoaded", () => {
       })
       .then((stream : MediaStream) => {
 
+        // Default config for a simple-peer Peer https://github.com/feross/simple-peer/issues/797#issuecomment-820915245
         var peer = new Peer({
           initiator: is_initiator,
           trickle: false,
@@ -56,7 +56,7 @@ window.addEventListener("DOMContentLoaded", () => {
         let peer_index = peers.length;
         peers.push({ peer });
 
-        peer.on("stream", (stream) => {
+        peer.on("stream", (stream : MediaStream) => {
 
           // comparing the stream we are given from node-wrtc with a mediastream instantiated by node
           let other = new MediaStream();
