@@ -23,56 +23,59 @@ window.addEventListener("DOMContentLoaded", () => {
   var username = "";
 
 
+  /**
+   * 
+   * We can easily capture our webcam 
+   * 
+  navigator.mediaDevices
+  .getUserMedia({
+    video: true,
+    audio: true,
+  }).then((stream)=> {
+    console.log(stream)
+    var video = document.getElementById("video") as HTMLVideoElement; 
+   // video.srcObject = stream;
+  })
+  **/
+
   function initializePeer(is_initiator) {
+
+    // wrtc.getUser
     wrtc
       .getUserMedia({
         video: true,
         audio: true,
       })
-      .then((stream) => {
-        
+      .then((stream : MediaStream) => {
+
         var peer = new Peer({
           initiator: is_initiator,
           trickle: false,
-          wrtc: wrtc,
-          stream: stream,
+          wrtc : wrtc,
+          stream : stream
         });
 
         let peer_index = peers.length;
         peers.push({ peer });
 
-        peer.on("stream", (_) => {
-          const audioCtx = new AudioContext();
-          const analyser = audioCtx.createAnalyser();
+        peer.on("stream", (stream) => {
 
-          var audio = document.getElementById("audio") as HTMLAudioElement;
-          var video = document.getElementById("video") as HTMLVideoElement;
-          video.srcObject = stream;
-          video.play();
-          //audio.srcObject = stream;
-
+          // comparing the stream we are given from node-wrtc with a mediastream instantiated by node
           let other = new MediaStream();
           console.log(stream);
           console.log(other);
-          //other =
-
-          //other.addTrack(stream.getAudioTracks()[0])
-
-          //console.log("track length" + other.getAudioTracks().length)
           console.log(typeof stream == typeof other);
 
+          // We attach our stream to srcObject of a rendered html video element
+          //   Working example and source code https://webrtc.github.io/samples/src/content/getusermedia/gum/
+          var video = document.getElementById("video") as HTMLVideoElement; 
+          
           video.srcObject = stream;
+          video.src = URL.createObjectURL(stream)
           video.play();
-          console.log("done")
+
+
           return;
-          const source = audioCtx.createMediaStreamSource(stream);
-
-          source.connect(analyser);
-
-          analyser.fftSize = 2048;
-          const bufferLength = analyser.frequencyBinCount;
-          const dataArray = new Uint8Array(bufferLength);
-          console.log(dataArray);
         });
 
         peer.on("signal", function (data) {
@@ -124,9 +127,7 @@ window.addEventListener("DOMContentLoaded", () => {
             `${specific_peer.username}: ${data}` + "\n";
         });
       })
-      .catch((e) => {
-        console.log(e);
-      });
+
   }
 
   // sending your message to each person
