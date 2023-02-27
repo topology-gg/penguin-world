@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@types/simple-peer": "^9.11.5",
-    "simple-peer": "^9.11.1",
-    "wrtc": "^0.4.7"
+    "simple-peer": "^9.11.1"
   }
 }

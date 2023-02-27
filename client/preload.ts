@@ -15,7 +15,6 @@ function streamStuff(stream){
 
 window.addEventListener("DOMContentLoaded", () => {
   const Peer = require("simple-peer");
-  const wrtc = require("wrtc");
 
   // Peers are a JSON object of an Instantiated peer object and a username Field
 
