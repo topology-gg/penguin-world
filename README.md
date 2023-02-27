@@ -6,7 +6,7 @@ cd client && npm i && IS_INITIATOR=TRUE npm run start
 
 <b>For M1 MAC USERS</b>
 
-node-webrtc currently is inoperable with M1 Macs so we will need to ...
+node-webrtc currently is inoperable with M1 Macs so we will need to use the following repo to get a working compiled version of node-wrtc for mac
 
 https://github.com/boblund/m1wrtc
 
