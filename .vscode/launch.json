@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Main Process",
+      "type": "node",
+      "request": "launch",
+      //"cwd": "${workspaceFolder}/client",
+      "program": "${workspaceFolder}/client/main.ts",
+      "runtimeExecutable": "${workspaceFolder}/client/node_modules/.bin/electron",
+      "windows": {
+        "runtimeExecutable": "${workspaceFolder}/client/node_modules/.bin/electron.cmd"
+      },
+      "preLaunchTask": "tsc: build - client/tsconfig.json",
+      "outFiles": ["${workspaceFolder}/client/build/**/*.js"],
+      "args": ["."],
+      "outputCapture": "std"
+    }
+  ]
+}

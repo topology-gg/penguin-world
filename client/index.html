@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title></title>
     <script src="preload.js" charset="utf-8"></script>
     <link rel="stylesheet" href="style.css" />
@@ -10,7 +12,12 @@
     Welcome to esotere! <br />Please enter your username.
     <form id="username-form">
       <label for="username">Username:</label><br />
-      <input type="text" id="username-field" name="username" value="" /><br />
+      <input
+        type="text"
+        id="username-field"
+        name="username"
+        value="remove_me"
+      /><br />
       <input type="submit" id="username-submit-btn" value="Submit" />
     </form>
 
@@ -19,14 +26,12 @@
       id="init-connection"
       value="+ Initialize Connection"
       class="btn"
-      disabled
     />
     <input
       type="submit"
       id="respond-connection"
       value="+ Respond to Connection Request"
       class="btn"
-      disabled
     />
 
     <div id="connections"></div>
@@ -65,6 +70,8 @@
     <div>
       <button id="send" disabled>send</button>
     </div>
-    
+
+    <audio id="audio" controls></audio>
+    <video id="video" controls></video>
   </body>
 </html>

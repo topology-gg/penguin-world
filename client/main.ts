@@ -16,7 +16,7 @@ const createWindow = () => {
       
     })
   
-    win.loadFile('index.html')
+    win.loadFile('../index.html')
   }
 
   app.on('window-all-closed', () => {
