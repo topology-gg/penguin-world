@@ -3,17 +3,20 @@ Esotere client is the gateway to the topology world.
 Message directly with fellow wizards and roam a fantasy overworld populated with artifacts from other on-chain realities.
 
 ## Table of Contents
-- [Project Title](#project-title)
+- [Esotere Client](#esotere-client)
   - [Table of Contents](#table-of-contents)
+  - [Stack](#stack)
   - [Installation](#installation)
   - [Usage](#usage)
   
 # Stack
-    The client UI uses Electron to run the app natively on your desktop. Simple-peer is used to establish WebRTC connections between peers. Game engine, additional netcode and frontend frameworks are to be determined.
+The client UI uses Electron to run the app natively on your desktop. Simple-peer is used to establish WebRTC connections between peers. Game engine, additional netcode and frontend frameworks are to be determined.
 
 # Featueres
-[x] Text Chat
-[x] Voice chat
+- [x] Text Chat
+- [x] Voice chat
+- [ ] Signalling
+- [ ] Shared platformer world
 
 
 # Installation
