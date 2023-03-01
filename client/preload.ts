@@ -5,14 +5,6 @@ const { systemPreferences } = require("electron");
 // All the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
 
-
-function streamStuff(stream){
-  var video = document.getElementById("video") as HTMLVideoElement;
-  video.srcObject = stream;
-  video.play();
-
-}
-
 window.addEventListener("DOMContentLoaded", () => {
   const Peer = require("simple-peer");
 
@@ -21,24 +13,10 @@ window.addEventListener("DOMContentLoaded", () => {
   var peers = [];
   var username = "";
 
-
-  /**
-   * 
-   * We can easily capture our webcam 
-   * 
-  navigator.mediaDevices
-  .getUserMedia({
-    video: true,
-    audio: true,
-  }).then((stream)=> {
-    console.log(stream)
-    var video = document.getElementById("video") as HTMLVideoElement; 
-   // video.srcObject = stream;
-  })
-  **/
-
   function initializePeer(is_initiator) {
     
+    let peer_index = peers.length;
+
     navigator.mediaDevices
       .getUserMedia({
         video: false,
@@ -50,28 +28,22 @@ window.addEventListener("DOMContentLoaded", () => {
         var peer = new Peer({
           initiator: is_initiator,
           trickle: false,
-          stream : stream
+          stream : stream,
+          iceCompleteTimeout : 1000 * 60 * 60
         });
 
-        let peer_index = peers.length;
+        peer._debug = console.log
+
+        
         peers.push({ peer });
 
         peer.on("stream", (stream : MediaStream) => {
-
-          // comparing the stream we are given from node-wrtc with a mediastream instantiated by node
-          let other = new MediaStream();
-          console.log(stream);
-          console.log(other);
-          console.log(typeof stream == typeof other);
-
           // We attach our stream to srcObject of a rendered html video element
-          //   Working example and source code https://webrtc.github.io/samples/src/content/getusermedia/gum/
+          // Working example and source code https://webrtc.github.io/samples/src/content/getusermedia/gum/
           var video = document.getElementById("audio") as HTMLVideoElement; 
           
           video.srcObject = stream;
-          //video.src = URL.createObjectURL(stream)
           video.play();
-
 
           return;
         });
@@ -124,6 +96,11 @@ window.addEventListener("DOMContentLoaded", () => {
           document.getElementById("messages").textContent +=
             `${specific_peer.username}: ${data}` + "\n";
         });
+      }).catch(e => {
+        console.log(e)
+        let peer = peers[peer_index];
+
+        peer.otherId
       })
 
   }
@@ -169,6 +146,7 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+  // initialize peer and open input for peers sdp
   document
     .getElementById("init-connection")
     .addEventListener("click", function (e) {
@@ -187,6 +165,7 @@ window.addEventListener("DOMContentLoaded", () => {
       initializePeer(true);
     });
 
+  // initialize peer and open input for peers sdp (as reciever)
   document
     .getElementById("respond-connection")
     .addEventListener("click", function (e) {
@@ -204,6 +183,7 @@ window.addEventListener("DOMContentLoaded", () => {
       initializePeer(false);
     });
 
+  // Disables adding additional peers, enables sending messages
   document
     .getElementById("finish-signaling")
     .addEventListener("click", function (e) {
