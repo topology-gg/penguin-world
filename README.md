@@ -1,6 +1,6 @@
 # Esotere Client
 Esotere client is the gateway to the topology world.
-Message directly with fellow wizards and roam a fantasy overworld populated with artifacts from other on-chain realities.
+Message directly with fellow wizards and roam a fantasy-themed overworld populated with artifacts from other on-chain realities.
 
 ## Table of Contents
 - [Esotere Client](#esotere-client)
