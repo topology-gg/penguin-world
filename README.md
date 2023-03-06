@@ -16,7 +16,7 @@ The client UI uses Electron to run the app natively on your desktop. Simple-peer
 - [x] Text Chat
 - [x] Voice chat
 - [ ] Signalling
-- [] Shared platformer world
+- [ ] Shared platformer world
 
 
 # Installation
