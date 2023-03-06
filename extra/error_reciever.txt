@@ -1,0 +1,28 @@
+preload.js:1
+Failed to load resource: net::ERR_FILE_NOT_FOUND
+VM163 index.js:392 non-initiator initial negotiation request discarded
+preload.ts:101 signal 0
+VM163 index.js:192 signal()
+VM163 index.js:947 signalingStateChange have-remote-offer
+VM163 index.js:1004 on track
+VM163 index.js:1018 on stream
+preload.ts:60
+MediaStream {id: 'oKxLB3or5exP7hq8JLrNezZvjqjTQ3R2nCVk', active: true, onaddtrack: null, onremovetrack: null, onactive: null, …}
+preload.ts:61
+MediaStream {id: '2d6f510e-677a-46a6-8527-d94937d22f5a', active: false, onaddtrack: null, onremovetrack: null, onactive: null, …}
+preload.ts:62 true
+VM163 index.js:930 flushing sender queue
+[]
+VM163 index.js:942 negotiated
+VM163 index.js:947 signalingStateChange stable
+VM163 index.js:708 iceStateChange (connection: new) (gathering: gathering)
+VM163 index.js:708 iceStateChange (connection: checking) (gathering: gathering)
+VM163 index.js:596 started iceComplete timeout
+VM163 index.js:708 iceStateChange (connection: checking) (gathering: complete)
+VM163 index.js:669 signal
+VM163 index.js:708 iceStateChange (connection: disconnected) (gathering: complete)
+VM163 index.js:438 destroying (error: Connection failed.)
+VM163 index.js:444 destroy (error: Connection failed.)
+VM163 index.js:699 Uncaught Error: Connection failed.
+    at Peer._onConnectionStateChange (VM163 index.js:699:28)
+    at Peer._pc.onconnectionstatechange (VM163 index.js:118:12)

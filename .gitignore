@@ -4,3 +4,7 @@
 
 
 ./extra/**
+
+
+./phaser-typescript-electron/**
+./sidescroll-template/**

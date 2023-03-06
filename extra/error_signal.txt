@@ -1,0 +1,23 @@
+Failed to load resource: net::ERR_FILE_NOT_FOUND
+VM163 index.js:389 starting batched negotiation
+VM163 index.js:407 start negotiation
+VM163 index.js:947 signalingStateChange have-local-offer
+VM163 index.js:627 createOffer success
+VM163 index.js:708 iceStateChange (connection: new) (gathering: gathering)
+VM163 index.js:596 started iceComplete timeout
+VM163 index.js:708 iceStateChange (connection: new) (gathering: complete)
+VM163 index.js:619 signal
+preload.ts:106 signal 0
+VM163 index.js:192 signal()
+VM163 index.js:708 iceStateChange (connection: checking) (gathering: complete)
+VM163 index.js:930 flushing sender queue []
+VM163 index.js:942 negotiated
+VM163 index.js:947 signalingStateChange stable
+VM163 index.js:708 iceStateChange (connection: disconnected) (gathering: complete)
+VM163 index.js:438 destroying (error: Connection failed.)
+VM163 index.js:444 destroy (error: Connection failed.)
+VM163 index.js:699 Uncaught Error: Connection failed.
+    at Peer._onConnectionStateChange (VM163 index.js:699:28)
+    at Peer._pc.onconnectionstatechange (VM163 index.js:118:12)
+_onConnectionStateChange @ VM163 index.js:699
+Peer._pc.onconnectionstatechange @ VM163 index.js:118

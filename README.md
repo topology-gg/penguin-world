@@ -40,3 +40,13 @@ Once the app is loaded select a username and hit `submit`.
 Then click `+ Respond to Connection Request`. Copy the JSON string from your peer and paste this string into `Other ID`. Select `connect` and share the resulting `Your ID` with your peer. Click `Done Connecting` and start chatting with your peer.
 
 
+
+
+Templates Used
+
+https://github.com/waliente/phaser-typescript-electron
+https://github.com/ourcade/sidescrolling-platformer-template-phaser3
+phaser starknet boilerplate 
+
+plugins
+https://rexrainbow.github.io/phaser3-rex-notes/docs/site/ui-textbox/
