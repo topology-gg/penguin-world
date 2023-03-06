@@ -39,7 +39,28 @@ export default class Demo extends Phaser.Scene {
     this.renderAcceptButton();
     this.renderWelcomeMessage();
     this.renderInputText();
+    this.renderPlatformerButton();
   }
+
+  renderPlatformerButton() {
+    var connectButton = this.add.existing(
+      new DefaultButton(
+        this,
+        "Enter Platformer",
+        (config.scale.width / 4) * 2,
+        config.scale.height / 4 + 200 + 300,
+        config.scale.width / 4 - 10,
+        "large",
+        () => {
+          this.scene.start('platformer');
+        }
+      )
+    );
+
+    return connectButton;
+  }
+
+
 
   renderWelcomeMessage() {
     var welcomeMessageConfig: IText.IConfig = {
