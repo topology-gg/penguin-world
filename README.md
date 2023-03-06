@@ -10,7 +10,7 @@ Message directly with fellow wizards and roam a fantasy-themed overworld populat
   - [Usage](#usage)
   
 # Stack
-The client UI uses Electron to run the app natively on your desktop. Simple-peer is used to establish WebRTC connections between peers. Game engine, additional netcode and frontend frameworks are to be determined.
+The client UI uses Electron to run the app natively on your desktop. Simple-peer is used to establish WebRTC connections between peers. Phaser 3 runs the platformer. Vite is used for bundling modules.
 
 # Features
 - [x] Text Chat
@@ -66,11 +66,11 @@ Then click `+ Respond to Connection Request`. Copy the JSON string from your pee
 
 
 
-Templates Used
+## Templates Used
 
-https://github.com/waliente/phaser-typescript-electron
-https://github.com/ourcade/sidescrolling-platformer-template-phaser3
-phaser starknet boilerplate 
+- https://github.com/waliente/phaser-typescript-electron
+- https://github.com/ourcade/sidescrolling-platformer-template-phaser3
+
 
 plugins
 https://rexrainbow.github.io/phaser3-rex-notes/docs/site/ui-textbox/
