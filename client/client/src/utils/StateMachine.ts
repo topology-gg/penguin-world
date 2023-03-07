@@ -80,7 +80,7 @@ export default class StateMachine
 
 		this.isChangingState = true
 
-		console.log(`[StateMachine (${this.id})] change from ${this.currentState?.name ?? 'none'} to ${name}`)
+		//console.log(`[StateMachine (${this.id})] change from ${this.currentState?.name ?? 'none'} to ${name}`)
 
 		if (this.currentState && this.currentState.onExit)
 		{
@@ -110,5 +110,12 @@ export default class StateMachine
 		{
 			this.currentState.onUpdate(dt)
 		}
+
+		return this.currentState?.name
+	}
+
+	// Used to share state with peers
+	getCurrentStateName(){
+		return this.currentState?.name || 'idle'
 	}
 }

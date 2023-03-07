@@ -1,7 +1,18 @@
 import { defineConfig } from 'vite';
 import replace from '@rollup/plugin-replace';
 
+console.log(process.nextTick)
 export default defineConfig({
+  define: {
+    'process.env': process.env,
+    'process.nextTick' : process.nextTick
+  },
+  resolve: {
+    alias: {
+      "readable-stream": "vite-compatible-readable-stream",
+      "simple-peer" : "simple-peer/simplepeer.min.js"
+    },
+  },
   build: {
     rollupOptions: {
       plugins: [

@@ -10,6 +10,9 @@
         background-color: #000;
       }
     </style>
+    <script>
+      global = globalThis; // Reintroduce global objecto bundle https://github.com/webpack/webpack/issues/10035#issuecomment-603231120
+    </script>
     <script type="module" src="/src/index.ts"></script>
   </head>
   <body>

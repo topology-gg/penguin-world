@@ -4,6 +4,7 @@ import config from "../config";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
 import Peer from "simple-peer";
+import { Connection } from "./types";
 
 interface connectionContainer {
   yourId: IText;
@@ -11,10 +12,6 @@ interface connectionContainer {
   connectButton: DefaultButton;
 }
 
-interface peer {
-  username: string;
-  connection: peer;
-}
 export default class Demo extends Phaser.Scene {
   constructor() {
     super("GameScene");
@@ -28,7 +25,7 @@ export default class Demo extends Phaser.Scene {
   private inputText: InputText | undefined;
 
   private connectionContainers: connectionContainer[] = [];
-  private peers: peer[] = [];
+  private peers: Connection[] = [];
 
   private initializeConnectionBtn: DefaultButton;
   private respondToConnectionBtn: DefaultButton;
@@ -48,11 +45,13 @@ export default class Demo extends Phaser.Scene {
         this,
         "Enter Platformer",
         (config.scale.width / 4) * 2,
-        config.scale.height / 4 + 200 + 300,
+        config.scale.height / 4 - 100,
         config.scale.width / 4 - 10,
         "large",
         () => {
-          this.scene.start('platformer');
+          this.scene.start('platformer', {
+            "peers" : this.peers
+          });
         }
       )
     );
@@ -141,7 +140,8 @@ export default class Demo extends Phaser.Scene {
         config.scale.width / 4 - 10,
         "large",
         () => {
-          //this.initializePeer(is_initiator);
+          let index = this.peers.length;
+          this.connect(index - 1);
         }
       )
     );
@@ -230,6 +230,8 @@ export default class Demo extends Phaser.Scene {
       otherId,
       connectButton,
     });
+
+    this.initializePeer(true)
   }
 
   renderConnection() {
@@ -276,9 +278,10 @@ export default class Demo extends Phaser.Scene {
       otherId,
       connectButton,
     });
+
+    this.initializePeer(false)
   }
 
-  /**
   initializePeer(is_initiator: boolean) {
     var peer = new Peer({
       initiator: is_initiator,
@@ -288,19 +291,33 @@ export default class Demo extends Phaser.Scene {
     let username = this.username;
     let index = this.peers.length;
     let connectionContainer = this.connectionContainers[index];
+
+    console.log(username)
     peer.on("signal", function (data) {
       //@ts-ignore
       data.username = username;
+      console.log(`signal ${data}`)
 
       connectionContainer.yourId.setText(JSON.stringify(data));
     });
 
-    let peerUsername = this.peers[index].username;
-    peer.on("data", function (data) {
-      console.log;
+    let connection : Connection = {
+      peer : peer,
+      username : ""
+    }
 
-      console.log(`${peerUsername}: ${data}` + "\n");
-    });
+    this.peers.push(connection)
+        
   }
-  */
+
+
+  connect(index : number){
+    console.log(index)
+    console.log(this.peers)
+    let selectedPeer = this.peers[index];
+    let connectionContainer = this.connectionContainers[index];
+    let peerUsername = this.peers[index].username;
+    
+    selectedPeer.peer.signal(connectionContainer.otherId.text)
+  }
 }

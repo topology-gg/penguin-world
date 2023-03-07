@@ -9,6 +9,7 @@ process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 
+
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({

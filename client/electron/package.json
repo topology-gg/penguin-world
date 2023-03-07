@@ -1,8 +1,8 @@
 {
-  "name": "phaser-3-typescript-electron-template",
+  "name": "esotere-electron",
   "version": "1.0.0",
   "main": "./main.js",
-  "author": "Marco Chierchia",
+  "author": "Topology",
   "license": "MIT",
   "scripts": {
     "copy": "yarn --cwd ../client build && node ./scripts/copy-from-client.js",
