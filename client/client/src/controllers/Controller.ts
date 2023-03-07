@@ -81,8 +81,8 @@ export default class CharacterController {
     this.sprite = sprite;
   }
   private idleOnEnter() {
-    console.log(this.sprite)
-    this.sprite.play('player-idle')
+    //console.log(this.sprite)
+    //this.sprite.play('player-idle')
   }
 
   private idleOnUpdate() {

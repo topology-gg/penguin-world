@@ -53,7 +53,7 @@ export default class Platformer extends Phaser.Scene {
       let tempPeng = this.matter.add
         .sprite(1005, 490, "penquin")
         .setFixedRotation();
-      
+
       this.connectedPlayers[index].controller = new CharacterController(
         this,
         tempPeng,
@@ -62,10 +62,8 @@ export default class Platformer extends Phaser.Scene {
       );
 
       connection.peer.on("data", (data: string) => {
-        
         let parsed: PeerData = JSON.parse(data);
         if (parsed.type == MessageType.INPUT) {
-          
           player.controller?.simulateInput(parsed.content);
         } else if (parsed.type == MessageType.POSITION) {
           let temp: PositionContent = parsed.content;
@@ -110,10 +108,10 @@ export default class Platformer extends Phaser.Scene {
 
     objectsLayer.objects.forEach((objData) => {
       const { x = 0, y = 0, name, width = 0, height = 0 } = objData;
-      
+
       switch (name) {
         case "penquin-spawn": {
-          console.log(x + width * 0.5, y)
+          console.log(x + width * 0.5, y);
           this.penquin = this.matter.add
             .sprite(x + width * 0.5, y, "penquin")
             .setFixedRotation();
@@ -141,7 +139,7 @@ export default class Platformer extends Phaser.Scene {
   update(t: number, dt: number) {
     this.playerController?.update(dt);
 
-    const GAME_TICKS_TILL_POSITION_UPDATE = 500;
+    const GAME_TICKS_TILL_POSITION_UPDATE = 5;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE < t) {
       this.connectedPlayers.forEach((connectedPlayer) => {
         let message = JSON.stringify({
@@ -161,9 +159,9 @@ export default class Platformer extends Phaser.Scene {
       let message = JSON.stringify({
         type: MessageType.INPUT,
         content: {
-          input : this.playerController?.getStateName(),
-          cursor : this.playerController?.serializeCursor(),
-          dt
+          input: this.playerController?.getStateName(),
+          cursor: this.playerController?.serializeCursor(),
+          dt,
         },
       });
 

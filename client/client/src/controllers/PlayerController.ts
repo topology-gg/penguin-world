@@ -66,7 +66,7 @@ export default class PlayerController {
   }
 
   private idleOnEnter() {
-    this.sprite.play("player-idle");
+    //this.sprite.play("player-idle");
   }
 
   private idleOnUpdate() {
@@ -81,7 +81,7 @@ export default class PlayerController {
   }
 
   private walkOnEnter() {
-    this.sprite.play("player-walk");
+    //this.sprite.play("player-walk");
   }
 
   private walkOnUpdate() {
