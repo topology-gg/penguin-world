@@ -20,7 +20,8 @@ The client UI uses Electron to run the app natively on your desktop. Simple-peer
 
 
 # Installation
-0. set up dependencies: install Node.js (https://nodejs.org/en/download/), update NPM version by running
+### Set up dependencies
+Install Node.js (https://nodejs.org/en/download/), update NPM version by running
 ```
 sudo npm install npm --global
 ```
@@ -29,7 +30,8 @@ then install yarn by running
 sudo npm install --global yarn
 ```
 
-1. Pull the main branch of the repo by running
+### Install the client
+At root folder, run
 ```
     cd client/client && yarn
 ```
