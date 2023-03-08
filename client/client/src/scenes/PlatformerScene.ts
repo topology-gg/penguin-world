@@ -50,13 +50,13 @@ export default class Platformer extends Phaser.Scene {
     data.forEach((connection, index) => {
       let player = this.connectedPlayers[index];
 
-      let tempPeng = this.matter.add
+      let penguin = this.matter.add
         .sprite(1005, 490, "penquin")
         .setFixedRotation();
 
       this.connectedPlayers[index].controller = new CharacterController(
         this,
-        tempPeng,
+        penguin,
         this.obstacles,
         player.username
       );
