@@ -4,7 +4,7 @@ In `simple-peer` a peer recieves a connection id from an initiator, this peer im
 
 In `simple-peer` this peer is immediatley destroyed https://github.com/feross/simple-peer/blob/master/index.js#L720
 
-For now we can comment out this line and our connections can be made over an arbitary amount of time.
+For now we can comment out [this](https://github.com/feross/simple-peer/blob/master/index.js#L720) line and our connections can be made over an arbitary amount of time.
 
 In the near future we can fork much of simple-peer and have our own error handling based on the fact we are using a blockchain as the signalling server.
 
