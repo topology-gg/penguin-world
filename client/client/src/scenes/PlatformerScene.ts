@@ -10,6 +10,10 @@ import type {
 
 import { MessageType } from "./enums";
 import CharacterController from "../controllers/Controller";
+import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
+import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
+import config from "../config";
+import { keyboardInputKeys } from "../utils/keys";
 
 interface ConnectedPlayer extends Connection {
   penguin?: Phaser.Physics.Matter.Sprite;
@@ -27,6 +31,8 @@ export default class Platformer extends Phaser.Scene {
 
   private lastPosBroadcast: number = 0;
 
+  private chatBox: InputText | undefined;
+
   constructor() {
     super("platformer");
   }
@@ -36,7 +42,6 @@ export default class Platformer extends Phaser.Scene {
     this.obstacles = new ObstaclesController();
 
     this.connectedPlayers = data.peers;
-    this.initializePeers(data.peers);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
@@ -54,6 +59,8 @@ export default class Platformer extends Phaser.Scene {
         .sprite(1005, 490, "penquin")
         .setFixedRotation();
 
+      console.log(penguin.parentContainer);
+      this.connectedPlayers[index].penguin = penguin;
       this.connectedPlayers[index].controller = new CharacterController(
         this,
         penguin,
@@ -68,15 +75,9 @@ export default class Platformer extends Phaser.Scene {
         } else if (parsed.type == MessageType.POSITION) {
           let temp: PositionContent = parsed.content;
 
-          player.penguin?.destroy();
-
-          player.penguin = this.matter.add
-            .sprite(temp.x, temp.y, "penquin")
-            .setFixedRotation();
-
-          player.controller?.replaceSprite(player.penguin);
+          player.controller?.moveSprite(temp.x, temp.y);
         } else if (parsed.type == MessageType.MESSAGE) {
-          console.log(`${connection.username} : ${parsed.content}`);
+          player.controller?.chat(parsed.content)
         }
       });
     });
@@ -93,8 +94,59 @@ export default class Platformer extends Phaser.Scene {
     this.load.atlas("snowman", "assets/snowman.png", "assets/snowman.json");
   }
 
+  renderChatBox() {
+    var inputTextConfig: IText.IConfig = {
+      text: "",
+      color: "black",
+      border: 1,
+      backgroundColor: "rgba(255,255,255,0.5)",
+      placeholder: "Send messages here",
+      
+    };
+    var inputText = new InputText(
+      this,
+      config.scale.width - 275,
+      config.scale.height - 50,
+      500,
+      50,
+      inputTextConfig
+    );
+    this.add.existing(inputText);
+
+    inputText.setScrollFactor(0, 0);
+
+    // Set our input text as a member object
+    this.chatBox = inputText;
+  }
+
+  appendKey({ key }: any) {
+    this.chatBox?.setText(this.chatBox?.text + key);
+  }
+
   create() {
-    this.scene.launch("ui");
+    this.initializePeers(this.connectedPlayers);
+    this.renderChatBox();
+
+
+    this.chatBox?.on("click", this.focusChatBox);
+
+    this.input.keyboard.on("keydown-" + "ENTER", () => {
+      this.sendMessage();
+    });
+
+    keyboardInputKeys.forEach((key) => {
+      this.input.keyboard.on(`keydown-${key}`, this.appendKey);
+    });
+
+    this.input.keyboard.on("keydown-" + "BACKSPACE", () => {
+      this.chatBox?.setText(
+        this.chatBox?.text.slice(0, this.chatBox?.text.length)
+      );
+    });
+    
+    this.input.keyboard.on("keydown-" + "SPACE", () => {
+      this.chatBox?.setText(this.chatBox?.text + " ");
+    });
 
     const map = this.make.tilemap({ key: "tilemap" });
     const tileset = map.addTilesetImage("iceworld", "tiles");
@@ -137,6 +189,10 @@ export default class Platformer extends Phaser.Scene {
   }
 
   update(t: number, dt: number) {
+    this.updatePeers(t, dt);
+  }
+
+  updatePeers(t: number, dt: number) {
     this.playerController?.update(dt);
 
     const GAME_TICKS_TILL_POSITION_UPDATE = 5;
@@ -168,4 +224,45 @@ export default class Platformer extends Phaser.Scene {
       connectedPlayer.peer.send(message);
     });
   }
+
+  sendMessage() {
+    this.connectedPlayers.forEach((connectedPlayer) => {
+      let message = JSON.stringify({
+        type: MessageType.MESSAGE,
+        content: this.chatBox?.text,
+      });
+
+      connectedPlayer.peer.send(message);
+    });
+
+    this.chatBox?.setText("");
+  }
+
+  focusChatBox(){
+    this.chatBox?.setStyle("backgroundColor", "rgba(2,2,2,1)")
+
+    
+    //this.initChatEvents();
+  }
+
+  initChatEvents(){
+    this.input.keyboard.on("keydown-" + "ENTER", () => {
+      this.sendMessage();
+    });
+
+    keyboardInputKeys.forEach((key) => {
+      this.input.keyboard.on(`keydown-${key}`, this.appendKey);
+    });
+
+    this.input.keyboard.on("keydown-" + "BACKSPACE", () => {
+      this.chatBox?.setText(
+        this.chatBox?.text.slice(0, this.chatBox?.text.length)
+      );
+    });
+    
+    this.input.keyboard.on("keydown-" + "SPACE", () => {
+      this.chatBox?.setText(this.chatBox?.text + " ");
+    });
+  }
+
 }

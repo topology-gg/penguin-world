@@ -1,14 +1,18 @@
 import Phaser from "phaser";
+import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import StateMachine from "../utils/StateMachine";
 import ObstaclesController from "./ObstaclesController";
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
+
+
 
 export default class PlayerController {
   private scene: Phaser.Scene;
   private sprite: Phaser.Physics.Matter.Sprite;
   private cursors: CursorKeys;
   private obstacles: ObstaclesController;
+  private label : Phaser.GameObjects.Text;
 
   private stateMachine: StateMachine;
 
@@ -62,11 +66,12 @@ export default class PlayerController {
   }
 
   update(dt: number) {
-    return this.stateMachine.update(dt);
+    let res = this.stateMachine.update(dt);
+    return res
   }
 
   private idleOnEnter() {
-    //this.sprite.play("player-idle");
+    this.sprite.play("player-idle");
   }
 
   private idleOnUpdate() {
@@ -81,7 +86,7 @@ export default class PlayerController {
   }
 
   private walkOnEnter() {
-    //this.sprite.play("player-walk");
+    this.sprite.play("player-walk");
   }
 
   private walkOnUpdate() {

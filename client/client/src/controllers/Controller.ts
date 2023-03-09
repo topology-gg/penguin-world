@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { InputContent, SimulatedCursor } from "../scenes/types";
+import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import StateMachine from "../utils/StateMachine";
 import ObstaclesController from "./ObstaclesController";
 
@@ -23,7 +24,9 @@ export default class CharacterController {
 
   private stateMachine: StateMachine;
   private cursors: SimulatedCursor;
-
+  private label : Phaser.GameObjects.Text;
+  private speechText : Phaser.GameObjects.Text;
+  
   constructor(
     scene: Phaser.Scene,
     sprite: Phaser.Physics.Matter.Sprite,
@@ -38,6 +41,10 @@ export default class CharacterController {
     this.createAnimations();
 
     this.stateMachine = new StateMachine(this, username);
+
+    console.log(`username ${username}`)
+    this.speechText = scene.add.text(sprite.x + LABEL_X_OFFSET - 25, sprite.y + LABEL_Y_OFFSET - 25, "");
+    this.label = scene.add.text(sprite.x + LABEL_X_OFFSET, sprite.y + LABEL_Y_OFFSET, username);
 
     this.stateMachine
       .addState("idle", {
@@ -73,16 +80,32 @@ export default class CharacterController {
     });
   }
 
-  update(dt: number) {
-    this.stateMachine.update(dt);
+
+  chat(input : string){
+    this.speechText.text = input
+    setTimeout(()=> {
+      this.speechText.text = ""
+    }, (15 * 1000))
   }
 
-  replaceSprite(sprite: Phaser.Physics.Matter.Sprite) {
-    this.sprite = sprite;
+
+  update(dt: number) {
+    this.stateMachine.update(dt);
+    this.label.x = this.sprite.x + LABEL_X_OFFSET
+    this.label.y = this.sprite.y + LABEL_Y_OFFSET
+    
+    this.speechText.x = this.sprite.x + LABEL_X_OFFSET
+    this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25
+
   }
+
+  moveSprite(x : number, y : number){
+    this.sprite.x = x;
+    this.sprite.y = y
+  }
+
   private idleOnEnter() {
-    //console.log(this.sprite)
-    //this.sprite.play('player-idle')
+    this.sprite.play('player-idle')
   }
 
   private idleOnUpdate() {
@@ -116,7 +139,6 @@ export default class CharacterController {
 
     const spaceJustPressed = this.cursors.space;
     if (spaceJustPressed) {
-        console.log("peer jump")
       this.stateMachine.setState("jump");
     }
   }
@@ -174,12 +196,8 @@ export default class CharacterController {
   }
 
   simulateInput(input: InputContent) {
-
-    console.log(input)
     this.cursors = input.cursor
     this.stateMachine.setState(input.input)
     this.update(input.dt)
-
-
   }
 }

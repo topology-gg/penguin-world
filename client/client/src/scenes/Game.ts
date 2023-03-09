@@ -310,14 +310,14 @@ export default class Demo extends Phaser.Scene {
         
   }
 
-
   connect(index : number){
     console.log(index)
     console.log(this.peers)
     let selectedPeer = this.peers[index];
     let connectionContainer = this.connectionContainers[index];
-    let peerUsername = this.peers[index].username;
     
+    this.peers[index].username = JSON.parse(connectionContainer.otherId.text).username
+    console.log("username " + this.peers[index].username)
     selectedPeer.peer.signal(connectionContainer.otherId.text)
   }
 }
