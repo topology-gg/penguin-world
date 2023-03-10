@@ -49,8 +49,8 @@ export default class Demo extends Phaser.Scene {
         config.scale.width / 4 - 10,
         "large",
         () => {
-          this.scene.start('platformer', {
-            "peers" : this.peers
+          this.scene.start("platformer", {
+            peers: this.peers,
           });
         }
       )
@@ -58,8 +58,6 @@ export default class Demo extends Phaser.Scene {
 
     return connectButton;
   }
-
-
 
   renderWelcomeMessage() {
     var welcomeMessageConfig: IText.IConfig = {
@@ -103,7 +101,6 @@ export default class Demo extends Phaser.Scene {
     this.inputText = inputText;
   }
 
-  
   renderAcceptButton() {
     this._connectButton = this.add.existing(
       new DefaultButton(
@@ -129,7 +126,6 @@ export default class Demo extends Phaser.Scene {
     );
   }
 
-  
   renderConnectButton(is_initiator: boolean) {
     var connectButton = this.add.existing(
       new DefaultButton(
@@ -185,7 +181,6 @@ export default class Demo extends Phaser.Scene {
     return connectButton;
   }
 
-  
   renderConnectInitiator() {
     var yourIdFieldConfig: IText.IConfig = {
       text: "",
@@ -231,7 +226,7 @@ export default class Demo extends Phaser.Scene {
       connectButton,
     });
 
-    this.initializePeer(true)
+    this.initializePeer(true);
   }
 
   renderConnection() {
@@ -279,7 +274,7 @@ export default class Demo extends Phaser.Scene {
       connectButton,
     });
 
-    this.initializePeer(false)
+    this.initializePeer(false);
   }
 
   initializePeer(is_initiator: boolean) {
@@ -292,32 +287,33 @@ export default class Demo extends Phaser.Scene {
     let index = this.peers.length;
     let connectionContainer = this.connectionContainers[index];
 
-    console.log(username)
+    console.log(username);
     peer.on("signal", function (data) {
       //@ts-ignore
       data.username = username;
-      console.log(`signal ${data}`)
+      console.log(`signal ${data}`);
 
       connectionContainer.yourId.setText(JSON.stringify(data));
     });
 
-    let connection : Connection = {
-      peer : peer,
-      username : ""
-    }
+    let connection: Connection = {
+      peer: peer,
+      username: "",
+    };
 
-    this.peers.push(connection)
-        
+    this.peers.push(connection);
   }
 
-  connect(index : number){
-    console.log(index)
-    console.log(this.peers)
+  connect(index: number) {
+    console.log(index);
+    console.log(this.peers);
     let selectedPeer = this.peers[index];
     let connectionContainer = this.connectionContainers[index];
-    
-    this.peers[index].username = JSON.parse(connectionContainer.otherId.text).username
-    console.log("username " + this.peers[index].username)
-    selectedPeer.peer.signal(connectionContainer.otherId.text)
+
+    this.peers[index].username = JSON.parse(
+      connectionContainer.otherId.text
+    ).username;
+    console.log("username " + this.peers[index].username);
+    selectedPeer.peer.signal(connectionContainer.otherId.text);
   }
 }

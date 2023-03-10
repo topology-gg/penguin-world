@@ -77,10 +77,29 @@ export default class Platformer extends Phaser.Scene {
 
           player.controller?.moveSprite(temp.x, temp.y);
         } else if (parsed.type == MessageType.MESSAGE) {
-          player.controller?.chat(parsed.content)
+          player.controller?.chat(parsed.content);
         }
       });
+
+      /**
+       * 
+       * addStream is throwing an error
+      navigator.mediaDevices
+        .getUserMedia({
+          video: false,
+          audio: true,
+        })
+        .then((stream) => {
+          connection.peer.addStream(stream);
+          connection.peer.on("stream", (stream: MediaStream) => {
+            console.log("streaming");
+          });
+        });
+        **/
     });
+
+    
+     
   }
 
   preload() {
@@ -101,7 +120,6 @@ export default class Platformer extends Phaser.Scene {
       border: 1,
       backgroundColor: "rgba(255,255,255,0.5)",
       placeholder: "Send messages here",
-      
     };
     var inputText = new InputText(
       this,
@@ -127,7 +145,6 @@ export default class Platformer extends Phaser.Scene {
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
 
-
     this.chatBox?.on("click", this.focusChatBox);
 
     this.input.keyboard.on("keydown-" + "ENTER", () => {
@@ -143,7 +160,7 @@ export default class Platformer extends Phaser.Scene {
         this.chatBox?.text.slice(0, this.chatBox?.text.length)
       );
     });
-    
+
     this.input.keyboard.on("keydown-" + "SPACE", () => {
       this.chatBox?.setText(this.chatBox?.text + " ");
     });
@@ -238,14 +255,13 @@ export default class Platformer extends Phaser.Scene {
     this.chatBox?.setText("");
   }
 
-  focusChatBox(){
-    this.chatBox?.setStyle("backgroundColor", "rgba(2,2,2,1)")
+  focusChatBox() {
+    this.chatBox?.setStyle("backgroundColor", "rgba(2,2,2,1)");
 
-    
     //this.initChatEvents();
   }
 
-  initChatEvents(){
+  initChatEvents() {
     this.input.keyboard.on("keydown-" + "ENTER", () => {
       this.sendMessage();
     });
@@ -259,10 +275,9 @@ export default class Platformer extends Phaser.Scene {
         this.chatBox?.text.slice(0, this.chatBox?.text.length)
       );
     });
-    
+
     this.input.keyboard.on("keydown-" + "SPACE", () => {
       this.chatBox?.setText(this.chatBox?.text + " ");
     });
   }
-
 }
