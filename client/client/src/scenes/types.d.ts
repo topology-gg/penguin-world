@@ -8,6 +8,7 @@ interface Connection {
 
 interface platformerSceneData {
   peers: Connection[];
+  username : string
 }
 
 

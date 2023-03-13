@@ -12,6 +12,8 @@ import { MessageType } from "./enums";
 import CharacterController from "../controllers/Controller";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
+import { ScrollablePanel } from 'phaser3-rex-plugins/templates/ui/ui-components.js';
+import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
 import config from "../config";
 import { keyboardInputKeys } from "../utils/keys";
 
@@ -33,16 +35,19 @@ export default class Platformer extends Phaser.Scene {
 
   private chatBox: InputText | undefined;
 
+  private username : string;
+
   constructor() {
     super("platformer");
   }
 
   init(data: platformerSceneData) {
+  
     this.cursors = this.input.keyboard.createCursorKeys();
     this.obstacles = new ObstaclesController();
 
     this.connectedPlayers = data.peers;
-
+    this.username = data.username;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
@@ -189,7 +194,8 @@ export default class Platformer extends Phaser.Scene {
             this,
             this.penquin,
             this.cursors,
-            this.obstacles
+            this.obstacles,
+            this.username
           );
 
           this.cameras.main.startFollow(this.penquin, true);
@@ -212,8 +218,8 @@ export default class Platformer extends Phaser.Scene {
   updatePeers(t: number, dt: number) {
     this.playerController?.update(dt);
 
-    const GAME_TICKS_TILL_POSITION_UPDATE = 5;
-    if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE < t) {
+    const GAME_TICKS_TILL_POSITION_UPDATE = 1;
+    if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {
       this.connectedPlayers.forEach((connectedPlayer) => {
         let message = JSON.stringify({
           type: MessageType.POSITION,
@@ -252,6 +258,7 @@ export default class Platformer extends Phaser.Scene {
       connectedPlayer.peer.send(message);
     });
 
+    this.playerController?.chat(this.chatBox?.text)
     this.chatBox?.setText("");
   }
 

@@ -16,11 +16,16 @@ export default class PlayerController {
 
   private stateMachine: StateMachine;
 
+  private label : Phaser.GameObjects.Text;
+  private speechText : Phaser.GameObjects.Text;
+
+  private chatTimeoutID : any
   constructor(
     scene: Phaser.Scene,
     sprite: Phaser.Physics.Matter.Sprite,
     cursors: CursorKeys,
-    obstacles: ObstaclesController
+    obstacles: ObstaclesController,
+    username : string
   ) {
     this.scene = scene;
     this.sprite = sprite;
@@ -30,6 +35,9 @@ export default class PlayerController {
     this.createAnimations();
 
     this.stateMachine = new StateMachine(this, "player");
+
+    this.speechText = scene.add.text(sprite.x + LABEL_X_OFFSET - 25, sprite.y + LABEL_Y_OFFSET - 25, "");
+    this.label = scene.add.text(sprite.x + LABEL_X_OFFSET, sprite.y + LABEL_Y_OFFSET, username);
 
     this.stateMachine
       .addState("idle", {
@@ -65,8 +73,21 @@ export default class PlayerController {
     });
   }
 
+  chat(input : string){
+    clearTimeout(this.chatTimeoutID)
+    this.speechText.text = input
+    this.chatTimeoutID = setTimeout(()=> {
+      this.speechText.text = ""
+    }, (15 * 1000))
+  }
+
   update(dt: number) {
     let res = this.stateMachine.update(dt);
+    this.label.x = this.sprite.x + LABEL_X_OFFSET
+    this.label.y = this.sprite.y + LABEL_Y_OFFSET
+    
+    this.speechText.x = this.sprite.x + LABEL_X_OFFSET
+    this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25
     return res
   }
 
