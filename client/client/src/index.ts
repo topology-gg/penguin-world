@@ -26,17 +26,18 @@ class Connections {
       username: "",
     };
 
-    let audio = document.createElement("audio")
-    document.body.appendChild(audio)
-    
+    if (stream) {
+      let audio = document.createElement("audio");
+      document.body.appendChild(audio);
 
-    connection.peer.on("stream", (stream: MediaStream) => {
-      audio.srcObject = stream
-      audio.play();
-    });
+      connection.peer.on("stream", (stream: MediaStream) => {
+        audio.srcObject = stream;
+        audio.play();
+      });
+    }
 
     this.connections.push(connection);
-    
+
     let index = this.connections.length - 1;
     return {
       peer,

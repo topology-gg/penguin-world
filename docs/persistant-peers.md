@@ -1,0 +1,1 @@
+In `client/src/index.ts` you will notice a connections class being instantiated and assigned to the Phaser Game object. The Connections class enables connections to persist between game scenes.
