@@ -4,7 +4,7 @@ import config from "../config";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
 import Peer from "simple-peer";
-import { Connection } from "./types";
+import { Connection, PeerInfo } from "./types";
 
 interface connectionContainer {
   yourId: IText;
@@ -28,7 +28,8 @@ export default class Demo extends Phaser.Scene {
   private inputText: InputText | undefined;
 
   private connectionContainers: connectionContainer[] = [];
-  private peers: Connection[] = [];
+
+  private removeSignalEvent: any;
 
   //private scene : Phaser.Scene
   preload() {}
@@ -49,8 +50,9 @@ export default class Demo extends Phaser.Scene {
         config.scale.width / 4 - 10,
         "large",
         () => {
+          this.removeSignalEvent();
           this.scene.start("platformer", {
-            peers: this.peers,
+            peers: this.game.config.connections.getConnections(),
             username: this.username,
           });
         }
@@ -137,7 +139,7 @@ export default class Demo extends Phaser.Scene {
         config.scale.width / 4 - 10,
         "large",
         () => {
-          let index = this.peers.length;
+          let index = this.connectionContainers.length;
           this.connect(index - 1);
         }
       )
@@ -291,8 +293,8 @@ export default class Demo extends Phaser.Scene {
       this.nextConnectionBtn == undefined
     ) {
       this.renderConnectionScrollButtons();
-    } 
-    
+    }
+
     if (
       this.connectionContainers.length == 1 ||
       this.connectionContainers.length >= this.connectionIndex
@@ -315,41 +317,39 @@ export default class Demo extends Phaser.Scene {
     this.initializePeer(is_initiator);
   }
 
-  initializePeer(is_initiator: boolean) {
-    var peer = new Peer({
-      initiator: is_initiator,
-      trickle: false,
-    });
-
+  private attachSignalEvent({ peer, index }: PeerInfo) {
     let username = this.username;
-    let index = this.peers.length;
+
     let connectionContainer = this.connectionContainers[index];
 
-    console.log(username);
-    peer.on("signal", function (data) {
+    function signalData(data: any) {
       //@ts-ignore
       data.username = username;
-      console.log(`signal ${data}`);
 
-      connectionContainer.yourId.setText(JSON.stringify(data));
-    });
+      if (connectionContainer.yourId.text.length == 0) {
+        connectionContainer?.yourId?.setText(JSON.stringify(data));
+      }
+    }
 
-    let connection: Connection = {
-      peer: peer,
-      username: "",
-    };
-
-    this.peers.push(connection);
+    this.removeSignalEvent = () => peer.removeListener("signal", signalData);
+    peer.on("signal", signalData);
+  }
+  initializePeer(is_initiator: boolean) {
+    this.game.config.connections.initializePeer(
+      is_initiator,
+      true,
+      // bind the Game scene object to the `this` keyword so it is accessible in the callback function
+      this.attachSignalEvent.bind(this)
+    );
   }
 
   connect(index: number) {
-    let selectedPeer = this.peers[index];
+    console.log(this);
+    let selectedPeer = this.game.config.connections.getConnectionByIndex(index);
     let connectionContainer = this.connectionContainers[index];
 
-    this.peers[index].username = JSON.parse(
-      connectionContainer.otherId.text
-    ).username;
-    console.log("username " + this.peers[index].username);
+    let username = JSON.parse(connectionContainer.otherId.text).username;
+    this.game.config.connections.updateUsername(index, username);
     selectedPeer.peer.signal(connectionContainer.otherId.text);
   }
 }

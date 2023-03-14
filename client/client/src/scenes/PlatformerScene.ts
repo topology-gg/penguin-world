@@ -12,7 +12,7 @@ import { MessageType } from "./enums";
 import CharacterController from "../controllers/Controller";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
-import { ScrollablePanel } from 'phaser3-rex-plugins/templates/ui/ui-components.js';
+import { ScrollablePanel } from "phaser3-rex-plugins/templates/ui/ui-components.js";
 import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
 import config from "../config";
 import { keyboardInputKeys } from "../utils/keys";
@@ -35,14 +35,13 @@ export default class Platformer extends Phaser.Scene {
 
   private chatBox: InputText | undefined;
 
-  private username : string;
+  private username: string;
 
   constructor() {
     super("platformer");
   }
 
   init(data: platformerSceneData) {
-  
     this.cursors = this.input.keyboard.createCursorKeys();
     this.obstacles = new ObstaclesController();
 
@@ -64,7 +63,6 @@ export default class Platformer extends Phaser.Scene {
         .sprite(1005, 490, "penquin")
         .setFixedRotation();
 
-      console.log(penguin.parentContainer);
       this.connectedPlayers[index].penguin = penguin;
       this.connectedPlayers[index].controller = new CharacterController(
         this,
@@ -85,26 +83,7 @@ export default class Platformer extends Phaser.Scene {
           player.controller?.chat(parsed.content);
         }
       });
-
-      /**
-       * 
-       * addStream is throwing an error
-      navigator.mediaDevices
-        .getUserMedia({
-          video: false,
-          audio: true,
-        })
-        .then((stream) => {
-          connection.peer.addStream(stream);
-          connection.peer.on("stream", (stream: MediaStream) => {
-            console.log("streaming");
-          });
-        });
-        **/
     });
-
-    
-     
   }
 
   preload() {
@@ -258,7 +237,7 @@ export default class Platformer extends Phaser.Scene {
       connectedPlayer.peer.send(message);
     });
 
-    this.playerController?.chat(this.chatBox?.text)
+    this.playerController?.chat(this.chatBox?.text);
     this.chatBox?.setText("");
   }
 

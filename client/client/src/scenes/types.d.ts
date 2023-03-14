@@ -6,6 +6,11 @@ interface Connection {
   peer: SimplePeer.Instance;
 }
 
+interface PeerInfo {
+  peer : SimplePeer.Instance,
+  index : number
+}
+
 interface platformerSceneData {
   peers: Connection[];
   username : string
