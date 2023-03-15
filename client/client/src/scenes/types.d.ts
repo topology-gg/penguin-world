@@ -1,9 +1,15 @@
 import SimplePeer from "simple-peer";
 import { MessageType } from "./enums";
 
+
+interface PeerMessage {
+  content : string
+  timestamp : number
+}
 interface Connection {
   username: string;
   peer: SimplePeer.Instance;
+  messages : PeerMessage[]
 }
 
 interface PeerInfo {

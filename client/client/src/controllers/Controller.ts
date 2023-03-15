@@ -4,8 +4,6 @@ import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import StateMachine from "../utils/StateMachine";
 import ObstaclesController from "./ObstaclesController";
 
-
-
 const initCursor: SimulatedCursor = {
   left: {
     isDown: false,
@@ -24,9 +22,9 @@ export default class CharacterController {
 
   private stateMachine: StateMachine;
   private cursors: SimulatedCursor;
-  private label : Phaser.GameObjects.Text;
-  private speechText : Phaser.GameObjects.Text;
-  
+  private label: Phaser.GameObjects.Text;
+  private speechText: Phaser.GameObjects.Text;
+
   constructor(
     scene: Phaser.Scene,
     sprite: Phaser.Physics.Matter.Sprite,
@@ -37,14 +35,22 @@ export default class CharacterController {
     this.sprite = sprite;
     this.obstacles = obstacles;
     this.cursors = initCursor;
-    
+
     this.createAnimations();
 
     this.stateMachine = new StateMachine(this, username);
 
-    console.log(`username ${username}`)
-    this.speechText = scene.add.text(sprite.x + LABEL_X_OFFSET - 25, sprite.y + LABEL_Y_OFFSET - 25, "");
-    this.label = scene.add.text(sprite.x + LABEL_X_OFFSET, sprite.y + LABEL_Y_OFFSET, username);
+    
+    this.speechText = scene.add.text(
+      sprite.x + LABEL_X_OFFSET - 25,
+      sprite.y + LABEL_Y_OFFSET - 25,
+      ""
+    );
+    this.label = scene.add.text(
+      sprite.x + LABEL_X_OFFSET,
+      sprite.y + LABEL_Y_OFFSET,
+      username
+    );
 
     this.stateMachine
       .addState("idle", {
@@ -64,7 +70,7 @@ export default class CharacterController {
 
     this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
       const body = data.bodyB as MatterJS.BodyType;
-
+      
       const gameObject = body.gameObject;
 
       if (!gameObject) {
@@ -80,32 +86,37 @@ export default class CharacterController {
     });
   }
 
-
-  chat(input : string){
-    this.speechText.text = input
-    setTimeout(()=> {
-      this.speechText.text = ""
-    }, (15 * 1000))
+  chat(input: string) {
+    this.speechText.text = input;
+    setTimeout(() => {
+      this.speechText.text = "";
+    }, 15 * 1000);
   }
 
+  updateLabels()
+  {
+    this.label.x = this.sprite.x + LABEL_X_OFFSET ;
+    this.label.y = this.sprite.y + LABEL_Y_OFFSET;
 
+    this.speechText.x = this.sprite.x + LABEL_X_OFFSET;
+    this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25;
+
+  }
   update(dt: number) {
     this.stateMachine.update(dt);
-    this.label.x = this.sprite.x + LABEL_X_OFFSET
-    this.label.y = this.sprite.y + LABEL_Y_OFFSET
-    
-    this.speechText.x = this.sprite.x + LABEL_X_OFFSET
-    this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25
-
+    this.updateLabels();
   }
 
-  moveSprite(x : number, y : number){
+  moveSprite(x: number, y: number) {
     this.sprite.x = x;
-    this.sprite.y = y
+    this.sprite.y = y;
+    
+    this.updateLabels()
+    
   }
 
   private idleOnEnter() {
-    this.sprite.play('player-idle')
+    this.sprite.play("player-idle");
   }
 
   private idleOnUpdate() {
@@ -117,10 +128,11 @@ export default class CharacterController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
+    
   }
 
   private walkOnEnter() {
-    this.sprite.play('player-walk')
+    this.sprite.play("player-walk");
   }
 
   private walkOnUpdate() {
@@ -141,6 +153,8 @@ export default class CharacterController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
+
+    
   }
 
   private walkOnExit() {
@@ -161,6 +175,7 @@ export default class CharacterController {
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
     }
+    
   }
 
   private createAnimations() {
@@ -192,12 +207,11 @@ export default class CharacterController {
       }),
       frameRate: 10,
     });
-
   }
 
   simulateInput(input: InputContent) {
-    this.cursors = input.cursor
-    this.stateMachine.setState(input.input)
-    this.update(input.dt)
+    this.cursors = input.cursor;
+    this.stateMachine.setState(input.input);
+    this.update(input.dt);
   }
 }

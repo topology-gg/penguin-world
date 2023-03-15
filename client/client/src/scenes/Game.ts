@@ -29,7 +29,7 @@ export default class Demo extends Phaser.Scene {
 
   private connectionContainers: connectionContainer[] = [];
 
-  private removeSignalEvent: any;
+  private removeSignalEvent: any = () => {};
 
   //private scene : Phaser.Scene
   preload() {}

@@ -83,11 +83,11 @@ export default class PlayerController {
 
   update(dt: number) {
     let res = this.stateMachine.update(dt);
-    this.label.x = this.sprite.x + LABEL_X_OFFSET
-    this.label.y = this.sprite.y + LABEL_Y_OFFSET
+    this.label.x = this.sprite.body.position.x + LABEL_X_OFFSET
+    this.label.y = this.sprite.body.position.y + LABEL_Y_OFFSET
     
-    this.speechText.x = this.sprite.x + LABEL_X_OFFSET
-    this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25
+    this.speechText.x = this.sprite.body.position.x + LABEL_X_OFFSET
+    this.speechText.y = this.sprite.body.position.y + LABEL_Y_OFFSET - 25
     return res
   }
 

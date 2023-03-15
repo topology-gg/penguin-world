@@ -9,7 +9,6 @@ class Connections {
   constructor() {}
 
   private connections: Connection[] = [];
-  private chats: string[] = [];
 
   private instantiatePeer(
     is_initiator: boolean,
@@ -24,6 +23,7 @@ class Connections {
     let connection: Connection = {
       peer: peer,
       username: "",
+      messages: []
     };
 
     if (stream) {

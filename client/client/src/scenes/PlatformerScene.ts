@@ -4,6 +4,8 @@ import PlayerController from "../controllers/PlayerController";
 import type {
   Connection,
   PeerData,
+  PeerMessage,
+  peerMessage,
   platformerSceneData,
   PositionContent,
 } from "./types";
@@ -37,6 +39,8 @@ export default class Platformer extends Phaser.Scene {
 
   private username: string;
 
+  private userMessages : PeerMessage[] = []
+
   constructor() {
     super("platformer");
   }
@@ -61,7 +65,9 @@ export default class Platformer extends Phaser.Scene {
 
       let penguin = this.matter.add
         .sprite(1005, 490, "penquin")
-        .setFixedRotation();
+        .setFixedRotation()
+
+      penguin.setCollisionGroup(-1)
 
       this.connectedPlayers[index].penguin = penguin;
       this.connectedPlayers[index].controller = new CharacterController(
@@ -81,6 +87,10 @@ export default class Platformer extends Phaser.Scene {
           player.controller?.moveSprite(temp.x, temp.y);
         } else if (parsed.type == MessageType.MESSAGE) {
           player.controller?.chat(parsed.content);
+          connection.messages.push({
+            content : parsed.content,
+            timestamp : this.time.now
+          })
         }
       });
     });
@@ -168,6 +178,10 @@ export default class Platformer extends Phaser.Scene {
           this.penquin = this.matter.add
             .sprite(x + width * 0.5, y, "penquin")
             .setFixedRotation();
+          
+          // Negative collision group prevents player collision
+          // https://brm.io/matter-js/docs/classes/Body.html#property_collisionFilter
+          this.penquin.setCollisionGroup(-1)
 
           this.playerController = new PlayerController(
             this,
@@ -192,6 +206,10 @@ export default class Platformer extends Phaser.Scene {
 
   update(t: number, dt: number) {
     this.updatePeers(t, dt);
+
+    this.connectedPlayers.forEach(connection => {
+      connection.controller?.updateLabels()
+    })
   }
 
   updatePeers(t: number, dt: number) {
@@ -237,8 +255,15 @@ export default class Platformer extends Phaser.Scene {
       connectedPlayer.peer.send(message);
     });
 
+    this.userMessages.push({
+      content : this.chatBox?.text || "",
+      timestamp : this.time.now
+    })
+
     this.playerController?.chat(this.chatBox?.text);
     this.chatBox?.setText("");
+
+
   }
 
   focusChatBox() {
