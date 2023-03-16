@@ -80,6 +80,10 @@ export default class Whiteboard {
     });
   }
 
+  setWhiteboardLink(link : string){
+    this.whiteboardLink = link
+    this.initializeWhiteboardBtn.setText("Collaborate")
+  }
   initializeWhiteboard(x: number, y: number, width: number) {
     this.whiteboard?.destroy()
     this.whiteboard = this._scene.add
@@ -171,7 +175,6 @@ export default class Whiteboard {
         200,
         "small",
         () => {
-        
           this.initializeWhiteboard(this.x, this.y, this.width);
           this._scene.cameras.main.startFollow(this.player, true);
         }

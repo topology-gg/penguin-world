@@ -1,5 +1,6 @@
 export enum MessageType {
     MESSAGE = "MESSAGE",
     INPUT = "INPUT",
-    POSITION = "POSITION"
+    POSITION = "POSITION",
+    WHITEBOARD = "WHITEBOARD"
   }

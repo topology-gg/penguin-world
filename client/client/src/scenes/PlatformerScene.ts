@@ -43,6 +43,8 @@ export default class Platformer extends Phaser.Scene {
 
   private userMessages: PeerMessage[] = [];
 
+  private whiteboard : Whiteboard;
+
   constructor() {
     super("platformer");
   }
@@ -93,6 +95,8 @@ export default class Platformer extends Phaser.Scene {
             content: parsed.content,
             timestamp: this.time.now,
           });
+        } else if (parsed.type == MessageType.WHITEBOARD){
+          this.whiteboard.setWhiteboardLink(parsed.content)
         }
       });
     });
@@ -205,10 +209,20 @@ export default class Platformer extends Phaser.Scene {
 
     this.matter.world.convertTilemapLayer(ground);
 
-    this.add.existing(new Whiteboard(this, 2685, 500, 700, true, () => {}, this.penquin))
+    this.whiteboard = this.add.existing(new Whiteboard(this, 2685, 500, 700, true, this.shareWhiteboardLink.bind(this), this.penquin))
     
   }
 
+  shareWhiteboardLink(link : string){
+    this.connectedPlayers.forEach((connectedPlayer) => {
+      let message = JSON.stringify({
+        type: MessageType.WHITEBOARD,
+        content: link,
+      });
+
+      connectedPlayer.peer.send(message);
+    });
+  }
   destroy() {
     this.scene.stop("ui");
   }
