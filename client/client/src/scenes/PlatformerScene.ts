@@ -18,6 +18,8 @@ import { ScrollablePanel } from "phaser3-rex-plugins/templates/ui/ui-components.
 import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
 import config from "../config";
 import { keyboardInputKeys } from "../utils/keys";
+import DefaultButton from "../ui-components/defaultButton";
+import Whiteboard from "../gameObjects/whiteboard";
 
 interface ConnectedPlayer extends Connection {
   penguin?: Phaser.Physics.Matter.Sprite;
@@ -39,7 +41,7 @@ export default class Platformer extends Phaser.Scene {
 
   private username: string;
 
-  private userMessages : PeerMessage[] = []
+  private userMessages: PeerMessage[] = [];
 
   constructor() {
     super("platformer");
@@ -65,9 +67,9 @@ export default class Platformer extends Phaser.Scene {
 
       let penguin = this.matter.add
         .sprite(1005, 490, "penquin")
-        .setFixedRotation()
+        .setFixedRotation();
 
-      penguin.setCollisionGroup(-1)
+      penguin.setCollisionGroup(-1);
 
       this.connectedPlayers[index].penguin = penguin;
       this.connectedPlayers[index].controller = new CharacterController(
@@ -88,9 +90,9 @@ export default class Platformer extends Phaser.Scene {
         } else if (parsed.type == MessageType.MESSAGE) {
           player.controller?.chat(parsed.content);
           connection.messages.push({
-            content : parsed.content,
-            timestamp : this.time.now
-          })
+            content: parsed.content,
+            timestamp: this.time.now,
+          });
         }
       });
     });
@@ -129,6 +131,7 @@ export default class Platformer extends Phaser.Scene {
 
     // Set our input text as a member object
     this.chatBox = inputText;
+
   }
 
   appendKey({ key }: any) {
@@ -136,6 +139,8 @@ export default class Platformer extends Phaser.Scene {
   }
 
   create() {
+
+
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
 
@@ -178,10 +183,10 @@ export default class Platformer extends Phaser.Scene {
           this.penquin = this.matter.add
             .sprite(x + width * 0.5, y, "penquin")
             .setFixedRotation();
-          
+
           // Negative collision group prevents player collision
           // https://brm.io/matter-js/docs/classes/Body.html#property_collisionFilter
-          this.penquin.setCollisionGroup(-1)
+          this.penquin.setCollisionGroup(-1);
 
           this.playerController = new PlayerController(
             this,
@@ -191,6 +196,7 @@ export default class Platformer extends Phaser.Scene {
             this.username
           );
 
+          
           this.cameras.main.startFollow(this.penquin, true);
           break;
         }
@@ -198,6 +204,9 @@ export default class Platformer extends Phaser.Scene {
     });
 
     this.matter.world.convertTilemapLayer(ground);
+
+    this.add.existing(new Whiteboard(this, 2685, 500, 700, true, () => {}, this.penquin))
+    
   }
 
   destroy() {
@@ -207,9 +216,9 @@ export default class Platformer extends Phaser.Scene {
   update(t: number, dt: number) {
     this.updatePeers(t, dt);
 
-    this.connectedPlayers.forEach(connection => {
-      connection.controller?.updateLabels()
-    })
+    this.connectedPlayers.forEach((connection) => {
+      connection.controller?.updateLabels();
+    });
   }
 
   updatePeers(t: number, dt: number) {
@@ -256,14 +265,12 @@ export default class Platformer extends Phaser.Scene {
     });
 
     this.userMessages.push({
-      content : this.chatBox?.text || "",
-      timestamp : this.time.now
-    })
+      content: this.chatBox?.text || "",
+      timestamp: this.time.now,
+    });
 
     this.playerController?.chat(this.chatBox?.text);
     this.chatBox?.setText("");
-
-
   }
 
   focusChatBox() {
