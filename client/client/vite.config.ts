@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite';
 import replace from '@rollup/plugin-replace';
+import { defineConfig } from 'vite';
 
 console.log(process.nextTick)
 export default defineConfig({
@@ -9,8 +9,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "readable-stream": "vite-compatible-readable-stream",
-      "simple-peer" : "simple-peer/simplepeer.min.js"
+      "readable-stream": "vite-compatible-readable-stream"
     },
   },
   build: {

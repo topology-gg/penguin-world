@@ -2,10 +2,12 @@
   "name": "esotere-client",
   "version": "0.0.1",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "signaling-server": "node ./src/signaling-server/server.js"
   },
   "repository": {
     "type": "git",
@@ -30,7 +32,10 @@
   "npmversion": "8.13.2",
   "dependencies": {
     "@types/simple-peer": "^9.11.5",
+    "concurrently": "^8.2.0",
+    "lib0": "^0.2.79",
     "phaser3-rex-plugins": "^1.1.82",
-    "simple-peer": "^9.11.1"
+    "simple-peer": "^9.11.1",
+    "ws": "^7.2.0"
   }
 }
