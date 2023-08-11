@@ -45,6 +45,11 @@ interface InputContent {
   dt: number;
 }
 
+interface TextContent {
+  text: string;
+  timestamp: number;
+}
+
 interface PeerData {
   type: MessageType;
   content: PositionContent | InputContent | string;

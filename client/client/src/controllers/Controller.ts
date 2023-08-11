@@ -3,6 +3,7 @@ import {
   InputContent,
   PositionContent,
   SimulatedCursor,
+  TextContent,
 } from "../scenes/types";
 import StateMachine from "../utils/StateMachine";
 import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
@@ -28,6 +29,7 @@ export default class CharacterController {
   private cursors: SimulatedCursor;
   private label: Phaser.GameObjects.Text;
   private speechText: Phaser.GameObjects.Text;
+  private textHistory: Array<TextContent> = new Array();
 
   constructor(
     scene: Phaser.Scene,
@@ -93,11 +95,19 @@ export default class CharacterController {
     this.sprite.destroy(true);
   }
 
-  chat(input: string) {
-    this.speechText.text = input;
+  chat(text: TextContent) {
+    const lastText = this.textHistory.at(-1);
+
+    if (lastText && lastText.timestamp >= text.timestamp) {
+      return;
+    }
+
+    this.speechText.text = text.text;
     setTimeout(() => {
       this.speechText.text = "";
-    }, 15 * 1000);
+    }, 5 * 1000);
+
+    this.textHistory.push(text);
   }
 
   updateLabels() {

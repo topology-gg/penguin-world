@@ -84,7 +84,7 @@ export default class PlayerController {
     this.speechText.text = input;
     this.chatTimeoutID = setTimeout(() => {
       this.speechText.text = "";
-    }, 15 * 1000);
+    }, 5 * 1000);
   }
 
   update(dt: number) {

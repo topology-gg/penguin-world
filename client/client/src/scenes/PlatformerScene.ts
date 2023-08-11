@@ -79,11 +79,13 @@ export default class Platformer extends Phaser.Scene {
         } else if (parsed.type == MessageType.POSITION) {
           player.controller?.moveSprite(parsed.content);
         } else if (parsed.type == MessageType.MESSAGE) {
-          player.controller?.chat(parsed.content);
-          connection.messages.push({
+          const message: PeerMessage = {
             content: parsed.content,
             timestamp: this.time.now,
-          });
+          };
+
+          player.controller?.chat(message);
+          connection.messages.push(message);
         } else if (parsed.type == MessageType.WHITEBOARD) {
           this.whiteboard.setWhiteboardLink(parsed.content);
         }
@@ -241,7 +243,7 @@ export default class Platformer extends Phaser.Scene {
       this.crdt.broadcastInput({
         input: this.playerController.getStateName(),
         cursor: this.playerController.serializeCursor(),
-        dt,
+        dt: 0, // dt is not being used as of now.
       });
     }
 
@@ -268,6 +270,10 @@ export default class Platformer extends Phaser.Scene {
 
       if (peer.get(CRDT_STATE.POSITION)) {
         this.peers.get(clientID)!.moveSprite(peer.get(CRDT_STATE.POSITION));
+      }
+
+      if (peer.get(CRDT_STATE.TEXT)) {
+        this.peers.get(clientID)!.chat(peer.get(CRDT_STATE.TEXT));
       }
     }
 
@@ -302,6 +308,13 @@ export default class Platformer extends Phaser.Scene {
   }
 
   sendMessage() {
+    if (this.chatBox?.text) {
+      this.crdt.broadcastText({
+        text: this.chatBox.text,
+        timestamp: this.time.now,
+      });
+    }
+
     this.connectedPlayers.forEach((connectedPlayer) => {
       let message = JSON.stringify({
         type: MessageType.MESSAGE,

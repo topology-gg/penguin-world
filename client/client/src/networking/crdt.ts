@@ -1,10 +1,11 @@
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { InputContent, PositionContent } from "../scenes/types";
+import { InputContent, PositionContent, TextContent } from "../scenes/types";
 
 export enum CRDT_STATE {
   INPUT = "input",
   POSITION = "position",
+  TEXT = "text",
   REMOVED = "removed",
 }
 
@@ -45,6 +46,7 @@ export default class CRDT {
 
         const position = state[CRDT_STATE.POSITION];
         const input = state[CRDT_STATE.INPUT];
+        const text = state[CRDT_STATE.TEXT];
 
         if (this.peers.has(clientID) === false) {
           this.peers.set(clientID, new Map());
@@ -52,6 +54,7 @@ export default class CRDT {
 
         this.peers.get(clientID)!.set(CRDT_STATE.POSITION, position);
         this.peers.get(clientID)!.set(CRDT_STATE.INPUT, input);
+        this.peers.get(clientID)!.set(CRDT_STATE.TEXT, text);
       });
 
       changes.removed.forEach((clientID: number) => {
@@ -84,6 +87,14 @@ export default class CRDT {
     }
 
     this.provider.awareness.setLocalStateField(CRDT_STATE.INPUT, input);
+  }
+
+  broadcastText(text: TextContent) {
+    if (this.isListening.get(this.AWARENESS) !== true) {
+      return;
+    }
+
+    this.provider.awareness.setLocalStateField(CRDT_STATE.TEXT, text);
   }
 
   getPeers() {
