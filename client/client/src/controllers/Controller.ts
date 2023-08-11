@@ -1,7 +1,11 @@
 import Phaser from "phaser";
-import { InputContent, PositionContent, SimulatedCursor } from "../scenes/types";
-import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
+import {
+  InputContent,
+  PositionContent,
+  SimulatedCursor,
+} from "../scenes/types";
 import StateMachine from "../utils/StateMachine";
+import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 const initCursor: SimulatedCursor = {
@@ -40,7 +44,6 @@ export default class CharacterController {
 
     this.stateMachine = new StateMachine(this, username);
 
-    
     this.speechText = scene.add.text(
       sprite.x + LABEL_X_OFFSET - 25,
       sprite.y + LABEL_Y_OFFSET - 25,
@@ -70,7 +73,7 @@ export default class CharacterController {
 
     this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
       const body = data.bodyB as MatterJS.BodyType;
-      
+
       const gameObject = body.gameObject;
 
       if (!gameObject) {
@@ -97,14 +100,12 @@ export default class CharacterController {
     }, 15 * 1000);
   }
 
-  updateLabels()
-  {
-    this.label.x = this.sprite.x + LABEL_X_OFFSET ;
+  updateLabels() {
+    this.label.x = this.sprite.x + LABEL_X_OFFSET;
     this.label.y = this.sprite.y + LABEL_Y_OFFSET;
 
     this.speechText.x = this.sprite.x + LABEL_X_OFFSET;
     this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25;
-
   }
   update(dt: number) {
     this.stateMachine.update(dt);
@@ -131,7 +132,6 @@ export default class CharacterController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
-    
   }
 
   private walkOnEnter() {
@@ -156,8 +156,6 @@ export default class CharacterController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
-
-    
   }
 
   private walkOnExit() {
@@ -178,7 +176,6 @@ export default class CharacterController {
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
     }
-    
   }
 
   private createAnimations() {

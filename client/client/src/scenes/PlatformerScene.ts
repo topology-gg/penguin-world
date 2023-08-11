@@ -5,22 +5,17 @@ import type {
   Connection,
   PeerData,
   PeerMessage,
-  peerMessage,
   platformerSceneData,
-  PositionContent,
 } from "./types";
 
-import { MessageType } from "./enums";
-import CharacterController from "../controllers/Controller";
-import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
-import { ScrollablePanel } from "phaser3-rex-plugins/templates/ui/ui-components.js";
-import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
+import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import config from "../config";
-import { keyboardInputKeys } from "../utils/keys";
-import DefaultButton from "../ui-components/defaultButton";
+import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
+import { keyboardInputKeys } from "../utils/keys";
+import { MessageType } from "./enums";
 
 interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
@@ -43,8 +38,8 @@ export default class Platformer extends Phaser.Scene {
 
   private userMessages: PeerMessage[] = [];
 
-  private whiteboard : Whiteboard;
-  
+  private whiteboard: Whiteboard;
+
   private crdt: CRDT;
   private peers: Map<number, CharacterController> = new Map();
 
@@ -89,8 +84,8 @@ export default class Platformer extends Phaser.Scene {
             content: parsed.content,
             timestamp: this.time.now,
           });
-        } else if (parsed.type == MessageType.WHITEBOARD){
-          this.whiteboard.setWhiteboardLink(parsed.content)
+        } else if (parsed.type == MessageType.WHITEBOARD) {
+          this.whiteboard.setWhiteboardLink(parsed.content);
         }
       });
     });
@@ -129,7 +124,6 @@ export default class Platformer extends Phaser.Scene {
 
     // Set our input text as a member object
     this.chatBox = inputText;
-
   }
 
   appendKey({ key }: any) {
@@ -137,8 +131,6 @@ export default class Platformer extends Phaser.Scene {
   }
 
   create() {
-
-
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
 
@@ -194,7 +186,6 @@ export default class Platformer extends Phaser.Scene {
             this.username
           );
 
-          
           this.cameras.main.startFollow(this.penquin, true);
           break;
         }
@@ -203,11 +194,22 @@ export default class Platformer extends Phaser.Scene {
 
     this.matter.world.convertTilemapLayer(ground);
 
+    this.whiteboard = this.add.existing(
+      new Whiteboard(
+        this,
+        2685,
+        500,
+        700,
+        true,
+        this.shareWhiteboardLink.bind(this),
+        this.penquin
+      )
+    );
 
     this.crdt.aware();
   }
 
-  shareWhiteboardLink(link : string){
+  shareWhiteboardLink(link: string) {
     this.connectedPlayers.forEach((connectedPlayer) => {
       let message = JSON.stringify({
         type: MessageType.WHITEBOARD,
