@@ -20,9 +20,9 @@ import config from "../config";
 import { keyboardInputKeys } from "../utils/keys";
 import DefaultButton from "../ui-components/defaultButton";
 import Whiteboard from "../gameObjects/whiteboard";
+import CRDT, { CRDT_STATE } from "../networking/crdt";
 
 interface ConnectedPlayer extends Connection {
-  penguin?: Phaser.Physics.Matter.Sprite;
   controller?: CharacterController;
 }
 
@@ -46,6 +46,7 @@ export default class Platformer extends Phaser.Scene {
   private whiteboard : Whiteboard;
   
   private crdt: CRDT;
+  private peers: Map<number, CharacterController> = new Map();
 
   constructor() {
     super("platformer");
@@ -70,17 +71,9 @@ export default class Platformer extends Phaser.Scene {
     data.forEach((connection, index) => {
       let player = this.connectedPlayers[index];
 
-      let penguin = this.matter.add
-        .sprite(1005, 490, "penquin")
-        .setFixedRotation();
-
-      penguin.setCollisionGroup(-1);
-
-      this.connectedPlayers[index].penguin = penguin;
-      this.connectedPlayers[index].controller = new CharacterController(
-        this,
-        penguin,
-        this.obstacles,
+      this.connectedPlayers[index].controller = this.initPeer(
+        1005,
+        490,
         player.username
       );
 
@@ -89,9 +82,7 @@ export default class Platformer extends Phaser.Scene {
         if (parsed.type == MessageType.INPUT) {
           player.controller?.simulateInput(parsed.content);
         } else if (parsed.type == MessageType.POSITION) {
-          let temp: PositionContent = parsed.content;
-
-          player.controller?.moveSprite(temp.x, temp.y);
+          player.controller?.moveSprite(parsed.content);
         } else if (parsed.type == MessageType.MESSAGE) {
           player.controller?.chat(parsed.content);
           connection.messages.push({
@@ -239,7 +230,44 @@ export default class Platformer extends Phaser.Scene {
   }
 
   updatePeers(t: number, dt: number) {
-    this.playerController?.update(dt);
+    if (this.playerController !== undefined) {
+      // Update my penguin.
+      this.playerController.update(dt);
+
+      // Broadcast my states to peers.
+      this.crdt.broadcastPosition(this.playerController.getPosition());
+      this.crdt.broadcastInput({
+        input: this.playerController.getStateName(),
+        cursor: this.playerController.serializeCursor(),
+        dt,
+      });
+    }
+
+    // Update peer penguins.
+    const peers = this.crdt.getPeers();
+
+    for (const [clientID, peer] of peers) {
+      if (this.peers.has(clientID) === false) {
+        this.peers.set(clientID, this.initPeer());
+      }
+
+      if (peer.get(CRDT_STATE.REMOVED) === true) {
+        this.peers.get(clientID)!.destroy();
+        this.peers.delete(clientID);
+
+        peers.delete(clientID);
+
+        return;
+      }
+
+      if (peer.get(CRDT_STATE.INPUT)) {
+        this.peers.get(clientID)!.simulateInput(peer.get(CRDT_STATE.INPUT));
+      }
+
+      if (peer.get(CRDT_STATE.POSITION)) {
+        this.peers.get(clientID)!.moveSprite(peer.get(CRDT_STATE.POSITION));
+      }
+    }
 
     const GAME_TICKS_TILL_POSITION_UPDATE = 1;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {
@@ -314,5 +342,17 @@ export default class Platformer extends Phaser.Scene {
     this.input.keyboard.on("keydown-" + "SPACE", () => {
       this.chatBox?.setText(this.chatBox?.text + " ");
     });
+  }
+
+  private initPeer(
+    x: number = 0,
+    y: number = 0,
+    username: string = ""
+  ): CharacterController {
+    let penguin = this.matter.add.sprite(0, 0, "penquin").setFixedRotation();
+
+    penguin.setCollisionGroup(-1);
+
+    return new CharacterController(this, penguin, this.obstacles, username);
   }
 }

@@ -186,6 +186,13 @@ export default class PlayerController {
     return this.stateMachine.getCurrentStateName();
   }
 
+  getPosition() {
+    return {
+      x: this.sprite.x,
+      y: this.sprite.y,
+    };
+  }
+
   serializeCursor() {
     return {
       left: {

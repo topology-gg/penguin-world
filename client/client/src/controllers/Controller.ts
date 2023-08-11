@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { InputContent, SimulatedCursor } from "../scenes/types";
+import { InputContent, PositionContent, SimulatedCursor } from "../scenes/types";
 import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import StateMachine from "../utils/StateMachine";
 import ObstaclesController from "./ObstaclesController";
@@ -86,6 +86,10 @@ export default class CharacterController {
     });
   }
 
+  destroy() {
+    this.sprite.destroy(true);
+  }
+
   chat(input: string) {
     this.speechText.text = input;
     setTimeout(() => {
@@ -107,12 +111,11 @@ export default class CharacterController {
     this.updateLabels();
   }
 
-  moveSprite(x: number, y: number) {
-    this.sprite.x = x;
-    this.sprite.y = y;
-    
-    this.updateLabels()
-    
+  moveSprite(position: PositionContent) {
+    this.sprite.x = position.x;
+    this.sprite.y = position.y;
+
+    this.updateLabels();
   }
 
   private idleOnEnter() {
