@@ -1,5 +1,6 @@
 import SimplePeer from "simple-peer";
 import { MessageType } from "./enums";
+import CRDT from "../networking/crdt";
 
 
 interface PeerMessage {
@@ -20,6 +21,7 @@ interface PeerInfo {
 interface platformerSceneData {
   peers: Connection[];
   username : string
+  crdt: CRDT;
 }
 
 

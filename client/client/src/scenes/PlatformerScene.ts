@@ -44,6 +44,8 @@ export default class Platformer extends Phaser.Scene {
   private userMessages: PeerMessage[] = [];
 
   private whiteboard : Whiteboard;
+  
+  private crdt: CRDT;
 
   constructor() {
     super("platformer");
@@ -55,6 +57,7 @@ export default class Platformer extends Phaser.Scene {
 
     this.connectedPlayers = data.peers;
     this.username = data.username;
+    this.crdt = data.crdt;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
@@ -209,8 +212,8 @@ export default class Platformer extends Phaser.Scene {
 
     this.matter.world.convertTilemapLayer(ground);
 
-    this.whiteboard = this.add.existing(new Whiteboard(this, 2685, 500, 700, true, this.shareWhiteboardLink.bind(this), this.penquin))
-    
+
+    this.crdt.aware();
   }
 
   shareWhiteboardLink(link : string){
