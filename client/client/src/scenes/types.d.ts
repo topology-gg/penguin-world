@@ -50,7 +50,12 @@ interface TextContent {
   timestamp: number;
 }
 
+interface UsernameContent {
+  username: string;
+}
+
 interface State {
+  username: UsernameContent | undefined;
   position: PositionContent | undefined;
   input: InputContent | undefined;
   text: TextContent | undefined;

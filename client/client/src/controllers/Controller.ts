@@ -4,6 +4,7 @@ import {
   PositionContent,
   SimulatedCursor,
   TextContent,
+  UsernameContent,
 } from "../scenes/types";
 import StateMachine from "../utils/StateMachine";
 import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
@@ -95,6 +96,10 @@ export default class CharacterController {
     this.sprite.destroy(true);
     this.label.destroy(true);
     this.speechText.destroy(true);
+  }
+
+  setUsername(username: UsernameContent) {
+    this.label.text = username.username;
   }
 
   chat(text: TextContent) {

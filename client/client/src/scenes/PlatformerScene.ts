@@ -210,6 +210,7 @@ export default class Platformer extends Phaser.Scene {
     );
 
     this.crdt.aware();
+    this.crdt.setUsername({ username: this.username });
   }
 
   shareWhiteboardLink(link: string) {
@@ -255,10 +256,6 @@ export default class Platformer extends Phaser.Scene {
     const peers = this.crdt.getPeers();
 
     for (const [clientID, peer] of peers) {
-      if (this.peers.has(clientID) === false) {
-        this.peers.set(clientID, this.initPeer());
-      }
-
       if (peer.get(CRDT_STATE.REMOVED) === true) {
         this.peers.get(clientID)!.destroy();
         this.peers.delete(clientID);
@@ -272,6 +269,16 @@ export default class Platformer extends Phaser.Scene {
 
       if (state === undefined) {
         return;
+      }
+
+      if (this.peers.has(clientID) === false) {
+        this.peers.set(clientID, this.initPeer());
+
+        const username = state.username;
+
+        if (username) {
+          this.peers.get(clientID)!.setUsername(username);
+        }
       }
 
       const position = state.position;

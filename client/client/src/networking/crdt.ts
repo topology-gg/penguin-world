@@ -5,6 +5,7 @@ import {
   PositionContent,
   State,
   TextContent,
+  UsernameContent,
 } from "../scenes/types";
 
 export enum CRDT_STATE {
@@ -31,6 +32,7 @@ export default class CRDT {
     this.isListening = new Map();
     this.peers = new Map();
     this.state = {
+      username: undefined,
       position: undefined,
       input: undefined,
       text: undefined,
@@ -77,6 +79,10 @@ export default class CRDT {
     });
 
     this.isListening.set(this.AWARENESS, true);
+  }
+
+  setUsername(username: UsernameContent) {
+    this.state.username = username;
   }
 
   setPosition(position: PositionContent) {
