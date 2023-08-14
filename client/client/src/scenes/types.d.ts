@@ -1,27 +1,27 @@
 import SimplePeer from "simple-peer";
+import CRDT from "../networking/crdt";
 import { MessageType } from "./enums";
 
-
 interface PeerMessage {
-  content : string
-  timestamp : number
+  content: string;
+  timestamp: number;
 }
 interface Connection {
   username: string;
   peer: SimplePeer.Instance;
-  messages : PeerMessage[]
+  messages: PeerMessage[];
 }
 
 interface PeerInfo {
-  peer : SimplePeer.Instance,
-  index : number
+  peer: SimplePeer.Instance;
+  index: number;
 }
 
 interface platformerSceneData {
   peers: Connection[];
-  username : string
+  username: string;
+  crdt: CRDT;
 }
-
 
 interface SimulatedCursor {
   left: {
@@ -35,14 +35,19 @@ interface SimulatedCursor {
 }
 
 interface PositionContent {
-  x : number,
-  y : number
+  x: number;
+  y: number;
 }
 
 interface InputContent {
-  cursor : SimulatedCursor,
-  input : string,
-  dt : number
+  cursor: SimulatedCursor;
+  input: string;
+  dt: number;
+}
+
+interface TextContent {
+  text: string;
+  timestamp: number;
 }
 
 interface PeerData {

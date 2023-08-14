@@ -8,6 +8,7 @@
     "copy": "yarn --cwd ../client build && node ./scripts/copy-from-client.js",
     "electron": "electron .",
     "dev": "yarn --cwd ../client dev --host & yarn electron",
+    "crdt": "yarn --cwd ../client crdt --host & yarn electron",
     "preview": "yarn copy && yarn electron",
     "app:dir": "electron-builder --dir",
     "app:dist": "electron-builder",

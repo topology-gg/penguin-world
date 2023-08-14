@@ -1,7 +1,12 @@
 import Phaser from "phaser";
-import { InputContent, SimulatedCursor } from "../scenes/types";
-import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
+import {
+  InputContent,
+  PositionContent,
+  SimulatedCursor,
+  TextContent,
+} from "../scenes/types";
 import StateMachine from "../utils/StateMachine";
+import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 const initCursor: SimulatedCursor = {
@@ -24,6 +29,7 @@ export default class CharacterController {
   private cursors: SimulatedCursor;
   private label: Phaser.GameObjects.Text;
   private speechText: Phaser.GameObjects.Text;
+  private textHistory: Array<TextContent> = new Array();
 
   constructor(
     scene: Phaser.Scene,
@@ -40,7 +46,6 @@ export default class CharacterController {
 
     this.stateMachine = new StateMachine(this, username);
 
-    
     this.speechText = scene.add.text(
       sprite.x + LABEL_X_OFFSET - 25,
       sprite.y + LABEL_Y_OFFSET - 25,
@@ -70,7 +75,7 @@ export default class CharacterController {
 
     this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
       const body = data.bodyB as MatterJS.BodyType;
-      
+
       const gameObject = body.gameObject;
 
       if (!gameObject) {
@@ -86,33 +91,42 @@ export default class CharacterController {
     });
   }
 
-  chat(input: string) {
-    this.speechText.text = input;
-    setTimeout(() => {
-      this.speechText.text = "";
-    }, 15 * 1000);
+  destroy() {
+    this.sprite.destroy(true);
   }
 
-  updateLabels()
-  {
-    this.label.x = this.sprite.x + LABEL_X_OFFSET ;
+  chat(text: TextContent) {
+    const lastText = this.textHistory.at(-1);
+
+    if (lastText && lastText.timestamp >= text.timestamp) {
+      return;
+    }
+
+    this.speechText.text = text.text;
+    setTimeout(() => {
+      this.speechText.text = "";
+    }, 5 * 1000);
+
+    this.textHistory.push(text);
+  }
+
+  updateLabels() {
+    this.label.x = this.sprite.x + LABEL_X_OFFSET;
     this.label.y = this.sprite.y + LABEL_Y_OFFSET;
 
     this.speechText.x = this.sprite.x + LABEL_X_OFFSET;
     this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25;
-
   }
   update(dt: number) {
     this.stateMachine.update(dt);
     this.updateLabels();
   }
 
-  moveSprite(x: number, y: number) {
-    this.sprite.x = x;
-    this.sprite.y = y;
-    
-    this.updateLabels()
-    
+  moveSprite(position: PositionContent) {
+    this.sprite.x = position.x;
+    this.sprite.y = position.y;
+
+    this.updateLabels();
   }
 
   private idleOnEnter() {
@@ -128,7 +142,6 @@ export default class CharacterController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
-    
   }
 
   private walkOnEnter() {
@@ -153,8 +166,6 @@ export default class CharacterController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
-
-    
   }
 
   private walkOnExit() {
@@ -175,7 +186,6 @@ export default class CharacterController {
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
     }
-    
   }
 
   private createAnimations() {

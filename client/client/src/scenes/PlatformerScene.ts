@@ -5,24 +5,19 @@ import type {
   Connection,
   PeerData,
   PeerMessage,
-  peerMessage,
   platformerSceneData,
-  PositionContent,
 } from "./types";
 
-import { MessageType } from "./enums";
-import CharacterController from "../controllers/Controller";
-import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
-import { ScrollablePanel } from "phaser3-rex-plugins/templates/ui/ui-components.js";
-import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
+import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import config from "../config";
-import { keyboardInputKeys } from "../utils/keys";
-import DefaultButton from "../ui-components/defaultButton";
+import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
+import CRDT, { CRDT_STATE } from "../networking/crdt";
+import { keyboardInputKeys } from "../utils/keys";
+import { MessageType } from "./enums";
 
 interface ConnectedPlayer extends Connection {
-  penguin?: Phaser.Physics.Matter.Sprite;
   controller?: CharacterController;
 }
 
@@ -43,7 +38,10 @@ export default class Platformer extends Phaser.Scene {
 
   private userMessages: PeerMessage[] = [];
 
-  private whiteboard : Whiteboard;
+  private whiteboard: Whiteboard;
+
+  private crdt: CRDT;
+  private peers: Map<number, CharacterController> = new Map();
 
   constructor() {
     super("platformer");
@@ -55,6 +53,7 @@ export default class Platformer extends Phaser.Scene {
 
     this.connectedPlayers = data.peers;
     this.username = data.username;
+    this.crdt = data.crdt;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
@@ -67,17 +66,9 @@ export default class Platformer extends Phaser.Scene {
     data.forEach((connection, index) => {
       let player = this.connectedPlayers[index];
 
-      let penguin = this.matter.add
-        .sprite(1005, 490, "penquin")
-        .setFixedRotation();
-
-      penguin.setCollisionGroup(-1);
-
-      this.connectedPlayers[index].penguin = penguin;
-      this.connectedPlayers[index].controller = new CharacterController(
-        this,
-        penguin,
-        this.obstacles,
+      this.connectedPlayers[index].controller = this.initPeer(
+        1005,
+        490,
         player.username
       );
 
@@ -86,17 +77,17 @@ export default class Platformer extends Phaser.Scene {
         if (parsed.type == MessageType.INPUT) {
           player.controller?.simulateInput(parsed.content);
         } else if (parsed.type == MessageType.POSITION) {
-          let temp: PositionContent = parsed.content;
-
-          player.controller?.moveSprite(temp.x, temp.y);
+          player.controller?.moveSprite(parsed.content);
         } else if (parsed.type == MessageType.MESSAGE) {
-          player.controller?.chat(parsed.content);
-          connection.messages.push({
+          const message: PeerMessage = {
             content: parsed.content,
             timestamp: this.time.now,
-          });
-        } else if (parsed.type == MessageType.WHITEBOARD){
-          this.whiteboard.setWhiteboardLink(parsed.content)
+          };
+
+          player.controller?.chat(message);
+          connection.messages.push(message);
+        } else if (parsed.type == MessageType.WHITEBOARD) {
+          this.whiteboard.setWhiteboardLink(parsed.content);
         }
       });
     });
@@ -135,7 +126,6 @@ export default class Platformer extends Phaser.Scene {
 
     // Set our input text as a member object
     this.chatBox = inputText;
-
   }
 
   appendKey({ key }: any) {
@@ -143,8 +133,6 @@ export default class Platformer extends Phaser.Scene {
   }
 
   create() {
-
-
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
 
@@ -200,7 +188,6 @@ export default class Platformer extends Phaser.Scene {
             this.username
           );
 
-          
           this.cameras.main.startFollow(this.penquin, true);
           break;
         }
@@ -209,11 +196,22 @@ export default class Platformer extends Phaser.Scene {
 
     this.matter.world.convertTilemapLayer(ground);
 
-    this.whiteboard = this.add.existing(new Whiteboard(this, 2685, 500, 700, true, this.shareWhiteboardLink.bind(this), this.penquin))
-    
+    this.whiteboard = this.add.existing(
+      new Whiteboard(
+        this,
+        2685,
+        500,
+        700,
+        true,
+        this.shareWhiteboardLink.bind(this),
+        this.penquin
+      )
+    );
+
+    this.crdt.aware();
   }
 
-  shareWhiteboardLink(link : string){
+  shareWhiteboardLink(link: string) {
     this.connectedPlayers.forEach((connectedPlayer) => {
       let message = JSON.stringify({
         type: MessageType.WHITEBOARD,
@@ -236,7 +234,48 @@ export default class Platformer extends Phaser.Scene {
   }
 
   updatePeers(t: number, dt: number) {
-    this.playerController?.update(dt);
+    if (this.playerController !== undefined) {
+      // Update my penguin.
+      this.playerController.update(dt);
+
+      // Broadcast my states to peers.
+      this.crdt.broadcastPosition(this.playerController.getPosition());
+      this.crdt.broadcastInput({
+        input: this.playerController.getStateName(),
+        cursor: this.playerController.serializeCursor(),
+        dt: 0, // dt is not being used as of now.
+      });
+    }
+
+    // Update peer penguins.
+    const peers = this.crdt.getPeers();
+
+    for (const [clientID, peer] of peers) {
+      if (this.peers.has(clientID) === false) {
+        this.peers.set(clientID, this.initPeer());
+      }
+
+      if (peer.get(CRDT_STATE.REMOVED) === true) {
+        this.peers.get(clientID)!.destroy();
+        this.peers.delete(clientID);
+
+        peers.delete(clientID);
+
+        return;
+      }
+
+      if (peer.get(CRDT_STATE.INPUT)) {
+        this.peers.get(clientID)!.simulateInput(peer.get(CRDT_STATE.INPUT));
+      }
+
+      if (peer.get(CRDT_STATE.POSITION)) {
+        this.peers.get(clientID)!.moveSprite(peer.get(CRDT_STATE.POSITION));
+      }
+
+      if (peer.get(CRDT_STATE.TEXT)) {
+        this.peers.get(clientID)!.chat(peer.get(CRDT_STATE.TEXT));
+      }
+    }
 
     const GAME_TICKS_TILL_POSITION_UPDATE = 1;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {
@@ -269,6 +308,13 @@ export default class Platformer extends Phaser.Scene {
   }
 
   sendMessage() {
+    if (this.chatBox?.text) {
+      this.crdt.broadcastText({
+        text: this.chatBox.text,
+        timestamp: this.time.now,
+      });
+    }
+
     this.connectedPlayers.forEach((connectedPlayer) => {
       let message = JSON.stringify({
         type: MessageType.MESSAGE,
@@ -311,5 +357,17 @@ export default class Platformer extends Phaser.Scene {
     this.input.keyboard.on("keydown-" + "SPACE", () => {
       this.chatBox?.setText(this.chatBox?.text + " ");
     });
+  }
+
+  private initPeer(
+    x: number = 0,
+    y: number = 0,
+    username: string = ""
+  ): CharacterController {
+    let penguin = this.matter.add.sprite(0, 0, "penquin").setFixedRotation();
+
+    penguin.setCollisionGroup(-1);
+
+    return new CharacterController(this, penguin, this.obstacles, username);
   }
 }

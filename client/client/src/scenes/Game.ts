@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import DefaultButton from "../ui-components/defaultButton";
 import config from "../config";
+import CRDT from "../networking/crdt";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
 import Peer from "simple-peer";
@@ -54,6 +55,7 @@ export default class Demo extends Phaser.Scene {
           this.scene.start("platformer", {
             peers: this.game.config.connections.getConnections(),
             username: this.username,
+            crdt: new CRDT(),
           });
         }
       )

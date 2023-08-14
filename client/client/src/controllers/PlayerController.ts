@@ -1,31 +1,29 @@
 import Phaser from "phaser";
-import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import StateMachine from "../utils/StateMachine";
+import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
-
-
 
 export default class PlayerController {
   private scene: Phaser.Scene;
   private sprite: Phaser.Physics.Matter.Sprite;
   private cursors: CursorKeys;
   private obstacles: ObstaclesController;
-  private label : Phaser.GameObjects.Text;
+  private label: Phaser.GameObjects.Text;
 
   private stateMachine: StateMachine;
 
-  private label : Phaser.GameObjects.Text;
-  private speechText : Phaser.GameObjects.Text;
+  private label: Phaser.GameObjects.Text;
+  private speechText: Phaser.GameObjects.Text;
 
-  private chatTimeoutID : any
+  private chatTimeoutID: any;
   constructor(
     scene: Phaser.Scene,
     sprite: Phaser.Physics.Matter.Sprite,
     cursors: CursorKeys,
     obstacles: ObstaclesController,
-    username : string
+    username: string
   ) {
     this.scene = scene;
     this.sprite = sprite;
@@ -36,8 +34,16 @@ export default class PlayerController {
 
     this.stateMachine = new StateMachine(this, "player");
 
-    this.speechText = scene.add.text(sprite.x + LABEL_X_OFFSET - 25, sprite.y + LABEL_Y_OFFSET - 25, "");
-    this.label = scene.add.text(sprite.x + LABEL_X_OFFSET, sprite.y + LABEL_Y_OFFSET, username);
+    this.speechText = scene.add.text(
+      sprite.x + LABEL_X_OFFSET - 25,
+      sprite.y + LABEL_Y_OFFSET - 25,
+      ""
+    );
+    this.label = scene.add.text(
+      sprite.x + LABEL_X_OFFSET,
+      sprite.y + LABEL_Y_OFFSET,
+      username
+    );
 
     this.stateMachine
       .addState("idle", {
@@ -73,22 +79,22 @@ export default class PlayerController {
     });
   }
 
-  chat(input : string){
-    clearTimeout(this.chatTimeoutID)
-    this.speechText.text = input
-    this.chatTimeoutID = setTimeout(()=> {
-      this.speechText.text = ""
-    }, (15 * 1000))
+  chat(input: string) {
+    clearTimeout(this.chatTimeoutID);
+    this.speechText.text = input;
+    this.chatTimeoutID = setTimeout(() => {
+      this.speechText.text = "";
+    }, 5 * 1000);
   }
 
   update(dt: number) {
     let res = this.stateMachine.update(dt);
-    this.label.x = this.sprite.body.position.x + LABEL_X_OFFSET
-    this.label.y = this.sprite.body.position.y + LABEL_Y_OFFSET
-    
-    this.speechText.x = this.sprite.body.position.x + LABEL_X_OFFSET
-    this.speechText.y = this.sprite.body.position.y + LABEL_Y_OFFSET - 25
-    return res
+    this.label.x = this.sprite.body.position.x + LABEL_X_OFFSET;
+    this.label.y = this.sprite.body.position.y + LABEL_Y_OFFSET;
+
+    this.speechText.x = this.sprite.body.position.x + LABEL_X_OFFSET;
+    this.speechText.y = this.sprite.body.position.y + LABEL_Y_OFFSET - 25;
+    return res;
   }
 
   private idleOnEnter() {
@@ -184,6 +190,13 @@ export default class PlayerController {
   // to share state with peers
   getStateName() {
     return this.stateMachine.getCurrentStateName();
+  }
+
+  getPosition() {
+    return {
+      x: this.sprite.x,
+      y: this.sprite.y,
+    };
   }
 
   serializeCursor() {
