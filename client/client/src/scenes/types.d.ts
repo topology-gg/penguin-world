@@ -50,6 +50,12 @@ interface TextContent {
   timestamp: number;
 }
 
+interface State {
+  position: PositionContent | undefined;
+  input: InputContent | undefined;
+  text: TextContent | undefined;
+}
+
 interface PeerData {
   type: MessageType;
   content: PositionContent | InputContent | string;

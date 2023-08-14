@@ -5,6 +5,7 @@ import type {
   Connection,
   PeerData,
   PeerMessage,
+  State,
   platformerSceneData,
 } from "./types";
 
@@ -238,13 +239,16 @@ export default class Platformer extends Phaser.Scene {
       // Update my penguin.
       this.playerController.update(dt);
 
-      // Broadcast my states to peers.
-      this.crdt.broadcastPosition(this.playerController.getPosition());
-      this.crdt.broadcastInput({
-        input: this.playerController.getStateName(),
+      // Update my state
+      this.crdt.setPosition(this.playerController.getPosition());
+      this.crdt.setInput({
         cursor: this.playerController.serializeCursor(),
+        input: this.playerController.getStateName(),
         dt: 0, // dt is not being used as of now.
       });
+
+      // Broadcast my state to peers.
+      this.crdt.broadcastState();
     }
 
     // Update peer penguins.
@@ -264,16 +268,26 @@ export default class Platformer extends Phaser.Scene {
         return;
       }
 
-      if (peer.get(CRDT_STATE.INPUT)) {
-        this.peers.get(clientID)!.simulateInput(peer.get(CRDT_STATE.INPUT));
+      const state: State | undefined = peer.get(CRDT_STATE.STATE);
+
+      if (state === undefined) {
+        return;
       }
 
-      if (peer.get(CRDT_STATE.POSITION)) {
-        this.peers.get(clientID)!.moveSprite(peer.get(CRDT_STATE.POSITION));
+      const position = state.position;
+      const input = state.input;
+      const text = state.text;
+
+      if (position) {
+        this.peers.get(clientID)!.moveSprite(position);
       }
 
-      if (peer.get(CRDT_STATE.TEXT)) {
-        this.peers.get(clientID)!.chat(peer.get(CRDT_STATE.TEXT));
+      if (input) {
+        this.peers.get(clientID)!.simulateInput(input);
+      }
+
+      if (text) {
+        this.peers.get(clientID)!.chat(text);
       }
     }
 
@@ -309,7 +323,7 @@ export default class Platformer extends Phaser.Scene {
 
   sendMessage() {
     if (this.chatBox?.text) {
-      this.crdt.broadcastText({
+      this.crdt.setText({
         text: this.chatBox.text,
         timestamp: this.time.now,
       });
