@@ -93,6 +93,8 @@ export default class CharacterController {
 
   destroy() {
     this.sprite.destroy(true);
+    this.label.destroy(true);
+    this.speechText.destroy(true);
   }
 
   chat(text: TextContent) {
