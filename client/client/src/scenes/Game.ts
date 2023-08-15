@@ -39,7 +39,6 @@ export default class Demo extends Phaser.Scene {
     this.renderAcceptButton();
     this.renderWelcomeMessage();
     this.renderInputText();
-    this.renderPlatformerButton();
   }
   renderPlatformerButton() {
     var connectButton = this.add.existing(
@@ -123,8 +122,7 @@ export default class Demo extends Phaser.Scene {
             this.dialogue?.setText(`Username : ${newUsername}`);
             this._connectButton.destroy();
             this.inputText?.destroy();
-            this.renderInitializeConnectButton();
-            this.renderRespondToConnectButton();
+            this.renderPlatformerButton();
           }
         }
       )
