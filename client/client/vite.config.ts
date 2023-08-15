@@ -1,15 +1,14 @@
-import replace from '@rollup/plugin-replace';
-import { defineConfig } from 'vite';
+import replace from "@rollup/plugin-replace";
+import { defineConfig, loadEnv } from "vite";
 
-console.log(process.nextTick)
 export default defineConfig({
   define: {
-    'process.env': process.env,
-    'process.nextTick' : process.nextTick
+    "process.env": Object.assign(process.env, loadEnv("", process.cwd(), "")),
+    "process.nextTick": process.nextTick,
   },
   resolve: {
     alias: {
-      "readable-stream": "vite-compatible-readable-stream"
+      "readable-stream": "vite-compatible-readable-stream",
     },
   },
   build: {
@@ -17,14 +16,14 @@ export default defineConfig({
       plugins: [
         //  Toggle the booleans here to enable / disable Phaser 3 features:
         replace({
-          'typeof CANVAS_RENDERER': "'true'",
-          'typeof WEBGL_RENDERER': "'true'",
-          'typeof EXPERIMENTAL': "'true'",
-          'typeof PLUGIN_CAMERA3D': "'false'",
-          'typeof PLUGIN_FBINSTANT': "'false'",
-          'typeof FEATURE_SOUND': "'true'"
-        })
-      ]
-    }
-  }
+          "typeof CANVAS_RENDERER": "'true'",
+          "typeof WEBGL_RENDERER": "'true'",
+          "typeof EXPERIMENTAL": "'true'",
+          "typeof PLUGIN_CAMERA3D": "'false'",
+          "typeof PLUGIN_FBINSTANT": "'false'",
+          "typeof FEATURE_SOUND": "'true'",
+        }),
+      ],
+    },
+  },
 });
