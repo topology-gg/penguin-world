@@ -26,7 +26,7 @@ export default class CRDT {
   constructor() {
     this.doc = new Y.Doc();
     this.provider = new WebrtcProvider("the-penguin-world", this.doc, {
-      signaling: ["ws://localhost:4444"],
+      signaling: [`${process.env.SIGNALING_SERVER}`],
     });
 
     this.isListening = new Map();
