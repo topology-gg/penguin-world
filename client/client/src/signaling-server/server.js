@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import http from "http";
+import { readFileSync } from "fs";
+import https from "https";
 import * as map from "lib0/map";
 import ws from "ws";
 
@@ -11,11 +12,16 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 
 const pingTimeout = 30000;
 
-const port = process.env.PORT || 4444;
+const port = process.env.PORT || 443;
 // @ts-ignore
 const wss = new ws.Server({ noServer: true });
 
-const server = http.createServer((request, response) => {
+const options = {
+  key: readFileSync("./src/signaling-server/tls/server-key.pem"),
+  cert: readFileSync("./src/signaling-server/tls/server-cert.pem"),
+};
+
+const server = https.createServer(options, (request, response) => {
   response.writeHead(200, { "Content-Type": "text/plain" });
   response.end("okay");
 });
