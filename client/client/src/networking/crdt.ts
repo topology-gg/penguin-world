@@ -37,6 +37,8 @@ export default class CRDT {
       input: undefined,
       text: undefined,
     };
+
+    console.log(`CRDT: Client ID is ${this.doc.clientID}.`);
   }
 
   aware() {
@@ -103,6 +105,10 @@ export default class CRDT {
     }
 
     this.provider.awareness.setLocalState(this.state);
+  }
+
+  getClientID() {
+    return this.doc.clientID;
   }
 
   getPeers() {

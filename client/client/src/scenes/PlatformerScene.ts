@@ -15,6 +15,7 @@ import config from "../config";
 import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
+import Media from "../networking/media";
 import { keyboardInputKeys } from "../utils/keys";
 import { MessageType } from "./enums";
 
@@ -42,6 +43,7 @@ export default class Platformer extends Phaser.Scene {
   private whiteboard: Whiteboard;
 
   private crdt: CRDT;
+  private media: Media;
   private peers: Map<number, CharacterController> = new Map();
 
   constructor() {
@@ -55,6 +57,7 @@ export default class Platformer extends Phaser.Scene {
     this.connectedPlayers = data.peers;
     this.username = data.username;
     this.crdt = data.crdt;
+    this.media = data.media;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
@@ -240,7 +243,7 @@ export default class Platformer extends Phaser.Scene {
       // Update my penguin.
       this.playerController.update(dt);
 
-      // Update my state
+      // Update my state.
       this.crdt.setPosition(this.playerController.getPosition());
       this.crdt.setInput({
         cursor: this.playerController.serializeCursor(),

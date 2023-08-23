@@ -1,5 +1,6 @@
 import SimplePeer from "simple-peer";
 import CRDT from "../networking/crdt";
+import Media from "../networking/media";
 import { MessageType } from "./enums";
 
 interface PeerMessage {
@@ -21,6 +22,7 @@ interface platformerSceneData {
   peers: Connection[];
   username: string;
   crdt: CRDT;
+  media: Media;
 }
 
 interface SimulatedCursor {
