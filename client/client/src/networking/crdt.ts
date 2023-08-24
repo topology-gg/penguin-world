@@ -7,6 +7,7 @@ import {
   TextContent,
   UsernameContent,
 } from "../scenes/types";
+import { CRDT_CHAT_HISTORY_REMOTE } from "./messages/crdt";
 
 export enum CRDT_STATE {
   REMOVED = "REMOVED",
@@ -15,6 +16,7 @@ export enum CRDT_STATE {
 
 export default class CRDT {
   private doc: Y.Doc;
+  private chatHistoryRemote: Y.Array<CRDT_CHAT_HISTORY_REMOTE>;
   private provider: WebrtcProvider;
 
   private isListening: Map<string, boolean>;
@@ -25,6 +27,7 @@ export default class CRDT {
 
   constructor() {
     this.doc = new Y.Doc();
+    this.chatHistoryRemote = this.doc.getArray("chat-history");
     this.provider = new WebrtcProvider("the-penguin-world", this.doc, {
       signaling: [`${process.env.SIGNALING_SERVER}`],
     });
@@ -99,6 +102,16 @@ export default class CRDT {
     this.state.text = text;
   }
 
+  setChatHistoryRemote(text: TextContent) {
+    this.chatHistoryRemote.push([
+      {
+        id: this.doc.clientID,
+        username: this.state.username ? this.state.username.username : "",
+        ...text,
+      },
+    ]);
+  }
+
   broadcastState() {
     if (this.isListening.get(this.AWARENESS) !== true) {
       return;
@@ -107,11 +120,15 @@ export default class CRDT {
     this.provider.awareness.setLocalState(this.state);
   }
 
-  getClientID() {
+  getClientID(): number {
     return this.doc.clientID;
   }
 
-  getPeers() {
+  getChatHistoryRemote(): Array<CRDT_CHAT_HISTORY_REMOTE> {
+    return this.chatHistoryRemote.toArray();
+  }
+
+  getPeers(): Map<number, Map<string, any>> {
     return this.peers;
   }
 }

@@ -462,6 +462,7 @@ export default class Platformer extends Phaser.Scene {
     };
 
     this.crdt.setText(text);
+    this.crdt.setChatHistoryRemote(text);
     this.chatHistoryLocal.push(this.chatBox.text);
 
     this.connectedPlayers.forEach((connectedPlayer) => {
