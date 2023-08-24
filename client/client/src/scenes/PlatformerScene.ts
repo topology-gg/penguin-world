@@ -34,6 +34,9 @@ export default class Platformer extends Phaser.Scene {
   private lastPosBroadcast: number = 0;
 
   private chatBox: InputText;
+  private chatHistoryLocal: Array<string> = [];
+  private chatHistoryLocalPointer: number = 0;
+  private chatSaved: string = "";
 
   private username: string;
 
@@ -196,7 +199,84 @@ export default class Platformer extends Phaser.Scene {
     });
 
     this.input.keyboard.on("keydown-" + "SPACE", () => {
-      this.chatBox?.setText(this.chatBox?.text + " ");
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      if (this.chatBox === undefined) {
+        return;
+      }
+
+      const oldText = this.chatBox.text;
+      const oldCursorPosition = this.chatBox.cursorPosition;
+      const newText =
+        oldText.slice(0, oldCursorPosition) +
+        " " +
+        oldText.slice(oldCursorPosition);
+      const newCursorPosition = oldCursorPosition + 1;
+
+      this.chatBox.setText(newText);
+      this.chatBox.setCursorPosition(newCursorPosition);
+    });
+
+    this.input.keyboard.on("keydown-" + "LEFT", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      this.chatBox.setCursorPosition(this.chatBox.cursorPosition - 1);
+    });
+
+    this.input.keyboard.on("keydown-" + "RIGHT", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      this.chatBox.setCursorPosition(this.chatBox.cursorPosition + 1);
+    });
+
+    this.input.keyboard.on("keydown-" + "UP", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      if (this.chatHistoryLocalPointer === 0) {
+        // End of chat history.
+        return;
+      }
+
+      if (this.chatHistoryLocalPointer === this.chatHistoryLocal.length) {
+        // Start to rewind chat history.
+        this.chatSaved = this.chatBox.text || "";
+      }
+
+      this.chatHistoryLocalPointer--;
+
+      this.chatBox.setText(this.chatHistoryLocal[this.chatHistoryLocalPointer]);
+    });
+
+    this.input.keyboard.on("keydown-" + "DOWN", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      if (this.chatHistoryLocalPointer === this.chatHistoryLocal.length) {
+        return;
+      }
+
+      this.chatHistoryLocalPointer++;
+
+      let text: string;
+
+      if (this.chatHistoryLocalPointer === this.chatHistoryLocal.length) {
+        // End of chat history.
+        text = this.chatSaved;
+      } else {
+        // Start to fast forward chat history.
+        text = this.chatHistoryLocal[this.chatHistoryLocalPointer];
+      }
+
+      this.chatBox.setText(text);
     });
 
     const map = this.make.tilemap({ key: "tilemap" });
@@ -382,6 +462,7 @@ export default class Platformer extends Phaser.Scene {
     };
 
     this.crdt.setText(text);
+    this.chatHistoryLocal.push(this.chatBox.text);
 
     this.connectedPlayers.forEach((connectedPlayer) => {
       let message = JSON.stringify({
@@ -399,6 +480,8 @@ export default class Platformer extends Phaser.Scene {
 
     this.playerController?.chat(this.chatBox.text);
     this.chatBox.setText("");
+    this.chatSaved = "";
+    this.chatHistoryLocalPointer = this.chatHistoryLocal.length;
   }
 
   focusChatBox() {
