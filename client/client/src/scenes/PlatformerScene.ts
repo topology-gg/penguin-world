@@ -106,6 +106,9 @@ export default class Platformer extends Phaser.Scene {
     this.load.image("health", "assets/health.png");
 
     this.load.atlas("snowman", "assets/snowman.png", "assets/snowman.json");
+
+    this.load.image("mute", "assets/mute.png");
+    this.load.image("unmute", "assets/unmute.png");
   }
 
   renderChatBox() {
@@ -132,6 +135,36 @@ export default class Platformer extends Phaser.Scene {
     this.chatBox = inputText;
   }
 
+  renderMic() {
+    const posX = config.scale.width - 574;
+    const posY = config.scale.height - 48;
+
+    const mute = this.add
+      .sprite(posX, posY, "mute")
+      .setDepth(1)
+      .setScrollFactor(0, 0)
+      .setInteractive();
+
+    const unmute = this.add
+      .sprite(posX, posY, "unmute")
+      .setDepth(1)
+      .setScrollFactor(0, 0)
+      .setInteractive()
+      .setAlpha(0); // Mute by default.
+
+    mute.on("pointerdown", () => {
+      mute.setAlpha(0);
+      unmute.clearAlpha();
+      this.media.unmute();
+    });
+
+    unmute.on("pointerdown", () => {
+      unmute.setAlpha(0);
+      mute.clearAlpha();
+      this.media.mute();
+    });
+  }
+
   appendKey({ key }: any) {
     this.chatBox?.setText(this.chatBox?.text + key);
   }
@@ -139,6 +172,7 @@ export default class Platformer extends Phaser.Scene {
   create() {
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
+    this.renderMic();
 
     this.chatBox?.on("click", this.focusChatBox);
 
@@ -175,7 +209,6 @@ export default class Platformer extends Phaser.Scene {
 
       switch (name) {
         case "penquin-spawn": {
-          console.log(x + width * 0.5, y);
           this.penquin = this.matter.add
             .sprite(x + width * 0.5, y, "penquin")
             .setFixedRotation();
