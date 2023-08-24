@@ -16,7 +16,6 @@ import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
-import { keyboardInputKeys } from "../utils/keys";
 import { MessageType } from "./enums";
 
 interface ConnectedPlayer extends Connection {
@@ -34,7 +33,7 @@ export default class Platformer extends Phaser.Scene {
 
   private lastPosBroadcast: number = 0;
 
-  private chatBox: InputText | undefined;
+  private chatBox: InputText;
 
   private username: string;
 
@@ -165,29 +164,35 @@ export default class Platformer extends Phaser.Scene {
     });
   }
 
-  appendKey({ key }: any) {
-    this.chatBox?.setText(this.chatBox?.text + key);
-  }
-
   create() {
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
     this.renderMic();
 
-    this.chatBox?.on("click", this.focusChatBox);
+    this.chatBox.on("click", this.focusChatBox);
+    this.plugins
+      .get("rexClickOutside")
+      .add(this.chatBox, {
+        enable: true,
+        mode: 0, // Fire click event upon press. Set it 1 to fire event upon release.
+      })
+      .on("clickoutside", () => {
+        this.chatBox.setBlur();
+      });
 
     this.input.keyboard.on("keydown-" + "ENTER", () => {
-      this.sendMessage();
+      if (this.chatBox.isFocused === true) {
+        this.sendMessage();
+        this.chatBox.setBlur();
+      } else {
+        this.chatBox.setFocus();
+      }
     });
 
-    keyboardInputKeys.forEach((key) => {
-      this.input.keyboard.on(`keydown-${key}`, this.appendKey);
-    });
-
-    this.input.keyboard.on("keydown-" + "BACKSPACE", () => {
-      this.chatBox?.setText(
-        this.chatBox?.text.slice(0, this.chatBox?.text.length)
-      );
+    this.input.keyboard.on("keydown-" + "ESC", () => {
+      if (this.chatBox.isFocused === true) {
+        this.chatBox.setBlur();
+      }
     });
 
     this.input.keyboard.on("keydown-" + "SPACE", () => {
@@ -274,7 +279,9 @@ export default class Platformer extends Phaser.Scene {
   updatePeers(t: number, dt: number) {
     if (this.playerController !== undefined) {
       // Update my penguin.
-      this.playerController.update(dt);
+      const shouldUpdateState = this.chatBox.isFocused === false;
+
+      this.playerController.update(dt, shouldUpdateState);
 
       // Update my state.
       this.crdt.setPosition(this.playerController.getPosition());
@@ -365,55 +372,37 @@ export default class Platformer extends Phaser.Scene {
   }
 
   sendMessage() {
-    if (this.chatBox?.text) {
-      this.crdt.setText({
-        text: this.chatBox.text,
-        timestamp: this.time.now,
-      });
+    if (this.chatBox.text.length === 0) {
+      return;
     }
+
+    const text = {
+      text: this.chatBox.text,
+      timestamp: this.time.now,
+    };
+
+    this.crdt.setText(text);
 
     this.connectedPlayers.forEach((connectedPlayer) => {
       let message = JSON.stringify({
         type: MessageType.MESSAGE,
-        content: this.chatBox?.text,
+        content: this.chatBox.text,
       });
 
       connectedPlayer.peer.send(message);
     });
 
     this.userMessages.push({
-      content: this.chatBox?.text || "",
+      content: this.chatBox.text,
       timestamp: this.time.now,
     });
 
-    this.playerController?.chat(this.chatBox?.text);
-    this.chatBox?.setText("");
+    this.playerController?.chat(this.chatBox.text);
+    this.chatBox.setText("");
   }
 
   focusChatBox() {
-    this.chatBox?.setStyle("backgroundColor", "rgba(2,2,2,1)");
-
-    //this.initChatEvents();
-  }
-
-  initChatEvents() {
-    this.input.keyboard.on("keydown-" + "ENTER", () => {
-      this.sendMessage();
-    });
-
-    keyboardInputKeys.forEach((key) => {
-      this.input.keyboard.on(`keydown-${key}`, this.appendKey);
-    });
-
-    this.input.keyboard.on("keydown-" + "BACKSPACE", () => {
-      this.chatBox?.setText(
-        this.chatBox?.text.slice(0, this.chatBox?.text.length)
-      );
-    });
-
-    this.input.keyboard.on("keydown-" + "SPACE", () => {
-      this.chatBox?.setText(this.chatBox?.text + " ");
-    });
+    // this.chatBox.setStyle("backgroundColor", "rgba(2,2,2,1)");
   }
 
   private initPeer(
