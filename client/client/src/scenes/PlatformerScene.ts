@@ -42,6 +42,7 @@ export default class Platformer extends Phaser.Scene {
   private chatSaved: string = "";
 
   private infoPanel: ScrollablePanel;
+  private infoPanelHasScrolled: boolean = false;
   private readonly COLOR_LIGHT = 0x24b5d2;
   private readonly COLOR_DARK = 0x1184bf;
   private readonly COLOR_CHAT = 0x508bc5;
@@ -415,6 +416,14 @@ export default class Platformer extends Phaser.Scene {
           0.8 // fillAlpha
         );
 
+        const sliderPosition = this.infoPanel.getElement("slider")!.value;
+        const shouldScrollToBottom =
+          sliderPosition >= 0.95 || !this.infoPanelHasScrolled;
+
+        if (sliderPosition > 0) {
+          this.infoPanelHasScrolled = true;
+        }
+
         for (
           let i = this.chatHistoryRemotePointer;
           i < chatHistoryRemote.length;
@@ -447,6 +456,10 @@ export default class Platformer extends Phaser.Scene {
           );
         }
         this.infoPanel.setDepth(1).setScrollFactor(0, 0).layout();
+
+        if (shouldScrollToBottom === true) {
+          this.infoPanel.scrollToBottom();
+        }
 
         this.chatHistoryRemotePointer = chatHistoryRemote.length;
       }
