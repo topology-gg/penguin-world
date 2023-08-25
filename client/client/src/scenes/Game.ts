@@ -46,7 +46,7 @@ export default class Demo extends Phaser.Scene {
         this,
         "Enter Platformer",
         (config.scale.width / 4) * 2,
-        config.scale.height / 4 - 100,
+        config.scale.height / 2,
         config.scale.width / 4 - 10,
         "large",
         () => {
