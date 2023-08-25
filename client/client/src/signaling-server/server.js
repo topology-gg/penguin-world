@@ -17,8 +17,8 @@ const port = process.env.PORT || 443;
 const wss = new ws.Server({ noServer: true });
 
 const options = {
-  key: readFileSync("./src/signaling-server/tls/server-key.pem"),
-  cert: readFileSync("./src/signaling-server/tls/server-cert.pem"),
+  key: readFileSync("./src/signaling-server/tls/localhost.key"),
+  cert: readFileSync("./src/signaling-server/tls/localhost.crt"),
 };
 
 const server = https.createServer(options, (request, response) => {
