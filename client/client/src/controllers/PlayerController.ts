@@ -1,6 +1,11 @@
 import Phaser from "phaser";
 import StateMachine from "../utils/StateMachine";
-import { USERNAME_X_OFFSET, USERNAME_Y_OFFSET } from "../utils/constants";
+import {
+  TEXT_CHAT_X_OFFSET,
+  TEXT_CHAT_Y_OFFSET,
+  USERNAME_X_OFFSET,
+  USERNAME_Y_OFFSET,
+} from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -34,16 +39,26 @@ export default class PlayerController {
     this.stateMachine = new StateMachine(this, "player");
 
     this.speechText = scene.add.text(
-      sprite.x + USERNAME_X_OFFSET - 25,
-      sprite.y + USERNAME_Y_OFFSET - 25,
-      ""
+      sprite.x + TEXT_CHAT_X_OFFSET,
+      sprite.y + TEXT_CHAT_Y_OFFSET,
+      "",
+      {
+        wordWrap: {
+          width: 300,
+          useAdvancedWrap: true,
+        },
+        align: "center",
+        maxLines: 5,
+      }
     );
     this.username = scene.add.text(
-      sprite.x - username.length / 2 + USERNAME_X_OFFSET,
+      sprite.x + USERNAME_X_OFFSET,
       sprite.y + USERNAME_Y_OFFSET,
       username,
       {
         color: "#F9DE04",
+        fixedWidth: 150,
+        align: "center",
       }
     );
 
@@ -105,8 +120,9 @@ export default class PlayerController {
     this.speechText.x =
       this.sprite.body.position.x -
       this.speechText.width / 2 +
-      USERNAME_X_OFFSET;
-    this.speechText.y = this.sprite.body.position.y + USERNAME_Y_OFFSET - 25;
+      TEXT_CHAT_X_OFFSET;
+    this.speechText.y =
+      this.sprite.body.position.y - this.speechText.height + TEXT_CHAT_Y_OFFSET;
 
     return res;
   }
