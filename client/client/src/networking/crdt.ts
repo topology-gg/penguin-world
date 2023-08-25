@@ -120,6 +120,16 @@ export default class CRDT {
     this.provider.awareness.setLocalState(this.state);
   }
 
+  observeChatHistoryRemote(
+    callback: (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => void
+  ) {
+    this.chatHistoryRemote.observe(
+      (event: Y.YArrayEvent<CRDT_CHAT_HISTORY_REMOTE>, _: Y.Transaction) => {
+        callback(event.target.toArray());
+      }
+    );
+  }
+
   getClientID(): number {
     return this.doc.clientID;
   }

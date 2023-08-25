@@ -17,6 +17,7 @@ import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
+import { CRDT_CHAT_HISTORY_REMOTE } from "../networking/messages/crdt";
 import { MessageType } from "./enums";
 
 interface ConnectedPlayer extends Connection {
@@ -37,6 +38,7 @@ export default class Platformer extends Phaser.Scene {
   private chatBox: InputText;
   private chatHistoryLocal: Array<string> = [];
   private chatHistoryLocalPointer: number = 0;
+  private chatHistoryRemotePointer: number | undefined = undefined;
   private chatSaved: string = "";
 
   private infoPanel: ScrollablePanel;
@@ -387,6 +389,68 @@ export default class Platformer extends Phaser.Scene {
 
     this.crdt.aware();
     this.crdt.setUsername({ username: this.username });
+    this.crdt.observeChatHistoryRemote(
+      (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
+        if (this.chatHistoryRemotePointer === undefined) {
+          if (
+            chatHistoryRemote.length === 1 &&
+            chatHistoryRemote[0].id === this.crdt.getClientID()
+          ) {
+            // There is no remote chat history, and now there is one from myself.
+            this.chatHistoryRemotePointer = 0;
+          } else {
+            // I just joined the world no matter if there is remote chat history.
+            this.chatHistoryRemotePointer = chatHistoryRemote.length;
+            return;
+          }
+        }
+
+        const chatBackground = this.rexUI.add.roundRectangle(
+          Number.MAX_SAFE_INTEGER, // x
+          Number.MAX_SAFE_INTEGER, // y
+          440, // width
+          50, // height
+          20, // radiusConfig
+          this.COLOR_CHAT, // fillColor
+          0.8 // fillAlpha
+        );
+
+        for (
+          let i = this.chatHistoryRemotePointer;
+          i < chatHistoryRemote.length;
+          i++
+        ) {
+          this.infoPanel.getElement("panel")!.add(
+            this.rexUI.add.label({
+              orientation: "horizontal",
+              width: chatBackground.displayWidth,
+              background: chatBackground,
+              space: {
+                left: 10,
+                right: 10,
+                top: 10,
+                bottom: 10,
+              },
+              text: this.add.text(
+                0, // x
+                0, // y
+                `${chatHistoryRemote[i].username}: ${chatHistoryRemote[i].text}`, // text
+                {
+                  wordWrap: {
+                    width: 420,
+                    useAdvancedWrap: true,
+                  },
+                } // style
+              ),
+              align: "left",
+            })
+          );
+        }
+        this.infoPanel.setDepth(1).setScrollFactor(0, 0).layout();
+
+        this.chatHistoryRemotePointer = chatHistoryRemote.length;
+      }
+    );
   }
 
   shareWhiteboardLink(link: string) {
@@ -519,20 +583,6 @@ export default class Platformer extends Phaser.Scene {
     this.crdt.setText(text);
     this.crdt.setChatHistoryRemote(text);
     this.chatHistoryLocal.push(this.chatBox.text);
-
-    this.connectedPlayers.forEach((connectedPlayer) => {
-      let message = JSON.stringify({
-        type: MessageType.MESSAGE,
-        content: this.chatBox.text,
-      });
-
-      connectedPlayer.peer.send(message);
-    });
-
-    this.userMessages.push({
-      content: this.chatBox.text,
-      timestamp: this.time.now,
-    });
 
     this.playerController?.chat(this.chatBox.text);
     this.chatBox.setText("");
