@@ -133,7 +133,7 @@ export default class Platformer extends Phaser.Scene {
       text: "",
       color: "black",
       border: 1,
-      backgroundColor: "rgba(255,255,255,0.5)",
+      backgroundColor: "rgba(190,190,190,0.8)",
       placeholder: "Send messages here",
     };
     var inputText = new InputText(
@@ -236,7 +236,9 @@ export default class Platformer extends Phaser.Scene {
     this.renderMic();
     this.renderInfoPanel();
 
-    this.chatBox.on("click", this.focusChatBox);
+    this.chatBox.on("focus", this.focusChatBox);
+    this.chatBox.on("blur", this.blurChatBox);
+
     this.plugins
       .get("rexClickOutside")
       .add(this.chatBox, {
@@ -619,9 +621,13 @@ export default class Platformer extends Phaser.Scene {
     this.chatHistoryLocalPointer = this.chatHistoryLocal.length;
   }
 
-  focusChatBox() {
-    // this.chatBox.setStyle("backgroundColor", "rgba(2,2,2,1)");
-  }
+  focusChatBox = () => {
+    this.chatBox.setStyle("backgroundColor", "rgba(255,255,255,0.9)");
+  };
+
+  blurChatBox = () => {
+    this.chatBox.setStyle("backgroundColor", "rgba(190,190,190,0.8)");
+  };
 
   private initPeer(
     x: number = 0,
