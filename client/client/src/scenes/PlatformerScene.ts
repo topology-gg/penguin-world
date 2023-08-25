@@ -11,6 +11,7 @@ import type {
 
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
+import ScrollablePanel from "phaser3-rex-plugins/templates/ui/scrollablepanel/ScrollablePanel";
 import config from "../config";
 import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
@@ -37,6 +38,11 @@ export default class Platformer extends Phaser.Scene {
   private chatHistoryLocal: Array<string> = [];
   private chatHistoryLocalPointer: number = 0;
   private chatSaved: string = "";
+
+  private infoPanel: ScrollablePanel;
+  private readonly COLOR_LIGHT = 0x24b5d2;
+  private readonly COLOR_DARK = 0x1184bf;
+  private readonly COLOR_CHAT = 0x508bc5;
 
   private username: string;
 
@@ -167,10 +173,59 @@ export default class Platformer extends Phaser.Scene {
     });
   }
 
+  renderInfoPanel() {
+    this.infoPanel = this.rexUI.add
+      .scrollablePanel({
+        x: config.scale.width - 275,
+        y: config.scale.height - 250,
+        width: 500,
+        height: 300,
+        scrollMode: "vertical",
+        background: this.rexUI.add.roundRectangle({
+          strokeColor: this.COLOR_LIGHT,
+          radius: 10,
+        }),
+        panel: {
+          child: this.rexUI.add.sizer({
+            orientation: "vertical",
+            space: { item: 10, top: 5, bottom: 5, right: 10 },
+          }),
+        },
+        mouseWheelScroller: {
+          focus: true,
+          speed: 0.1,
+        },
+        slider: {
+          track: this.rexUI.add.roundRectangle({
+            width: 3,
+            radius: 3,
+            color: this.COLOR_DARK,
+            alpha: 0.4,
+          }),
+          thumb: this.rexUI.add.roundRectangle({
+            width: 8,
+            radius: 8,
+            color: this.COLOR_LIGHT,
+            alpha: 0.75,
+          }),
+        },
+        space: {
+          left: 15,
+          right: 15,
+          top: 10,
+          bottom: 10,
+        },
+      })
+      .setDepth(1)
+      .setScrollFactor(0, 0)
+      .layout();
+  }
+
   create() {
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
     this.renderMic();
+    this.renderInfoPanel();
 
     this.chatBox.on("click", this.focusChatBox);
     this.plugins
