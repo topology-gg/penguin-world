@@ -24,6 +24,11 @@ interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
 }
 
+enum PEER_PRESENCE {
+  JOINED = "joined",
+  LEFT = "left",
+}
+
 export default class Platformer extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
 
@@ -46,6 +51,7 @@ export default class Platformer extends Phaser.Scene {
   private readonly COLOR_LIGHT = 0x24b5d2;
   private readonly COLOR_DARK = 0x1184bf;
   private readonly COLOR_CHAT = 0x508bc5;
+  private readonly COLOR_PRESENCE = 0xce70ee;
 
   private username: string;
 
@@ -512,6 +518,11 @@ export default class Platformer extends Phaser.Scene {
 
     for (const [clientID, peer] of peers) {
       if (peer.get(CRDT_STATE.REMOVED) === true) {
+        this.informPeerPresence(
+          this.peers.get(clientID)!.getUsername(),
+          PEER_PRESENCE.LEFT
+        );
+
         this.peers.get(clientID)!.destroy();
         this.peers.delete(clientID);
 
@@ -534,6 +545,11 @@ export default class Platformer extends Phaser.Scene {
         if (username) {
           this.peers.get(clientID)!.setUsername(username);
         }
+
+        this.informPeerPresence(
+          username ? username.username : " ",
+          PEER_PRESENCE.JOINED
+        );
       }
 
       const position = state.position;
@@ -617,5 +633,57 @@ export default class Platformer extends Phaser.Scene {
     penguin.setCollisionGroup(-1);
 
     return new CharacterController(this, penguin, this.obstacles, username);
+  }
+
+  // TODO: Refactor codes adding new info to info panel.
+  private informPeerPresence(username: string, presence: PEER_PRESENCE) {
+    const presenceBackground = this.rexUI.add.roundRectangle(
+      Number.MAX_SAFE_INTEGER, // x
+      Number.MAX_SAFE_INTEGER, // y
+      440, // width
+      50, // height
+      20, // radiusConfig
+      this.COLOR_PRESENCE, // fillColor
+      0.8 // fillAlpha
+    );
+
+    const sliderPosition = this.infoPanel.getElement("slider")!.value;
+    const shouldScrollToBottom =
+      sliderPosition >= 0.95 || !this.infoPanelHasScrolled;
+
+    if (sliderPosition > 0) {
+      this.infoPanelHasScrolled = true;
+    }
+
+    this.infoPanel.getElement("panel")!.add(
+      this.rexUI.add.label({
+        orientation: "horizontal",
+        width: presenceBackground.displayWidth,
+        background: presenceBackground,
+        space: {
+          left: 10,
+          right: 10,
+          top: 10,
+          bottom: 10,
+        },
+        text: this.add.text(
+          0, // x
+          0, // y
+          `${username} ${presence}`, // text
+          {
+            wordWrap: {
+              width: 420,
+              useAdvancedWrap: true,
+            },
+          } // style
+        ),
+        align: "left",
+      })
+    );
+    this.infoPanel.setDepth(1).setScrollFactor(0, 0).layout();
+
+    if (shouldScrollToBottom === true) {
+      this.infoPanel.scrollToBottom();
+    }
   }
 }

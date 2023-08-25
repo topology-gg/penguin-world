@@ -102,6 +102,10 @@ export default class CharacterController {
     this.label.text = username.username;
   }
 
+  getUsername() {
+    return this.label.text;
+  }
+
   chat(text: TextContent) {
     const lastText = this.textHistory.at(-1);
 
