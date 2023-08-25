@@ -52,7 +52,7 @@ export default class CRDT {
     this.provider.awareness.on("change", (changes: any) => {
       const states = this.provider.awareness.getStates();
 
-      changes.updated.forEach((clientID: number) => {
+      const setState = (clientID: number) => {
         if (clientID === this.doc.clientID) {
           return;
         }
@@ -68,9 +68,9 @@ export default class CRDT {
         }
 
         this.peers.get(clientID)!.set(CRDT_STATE.STATE, state);
-      });
+      };
 
-      changes.removed.forEach((clientID: number) => {
+      const setRemoved = (clientID: number) => {
         if (clientID === this.doc.clientID) {
           return;
         }
@@ -80,7 +80,13 @@ export default class CRDT {
         }
 
         this.peers.get(clientID)!.set(CRDT_STATE.REMOVED, true);
-      });
+      };
+
+      changes.added.forEach(setState);
+
+      changes.updated.forEach(setState);
+
+      changes.removed.forEach(setRemoved);
     });
 
     this.isListening.set(this.AWARENESS, true);
