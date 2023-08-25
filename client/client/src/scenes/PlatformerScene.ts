@@ -360,8 +360,32 @@ export default class Platformer extends Phaser.Scene {
 
       switch (name) {
         case "penquin-spawn": {
+          const clientID = this.crdt.getClientID();
+          const zone = clientID % 3;
+
+          let randomX: number = 1050;
+          let randomY: number = 490;
+
+          switch (zone) {
+            case 0:
+              randomX = (clientID % 730) + 450;
+              randomY = (clientID % 130) + 390;
+              break;
+            case 1:
+              randomX = (clientID % 465) + 1555;
+              randomY = (clientID % 180) + 50;
+              break;
+            case 2:
+              randomX = (clientID % 620) + 280;
+              randomY = (clientID % 125) - 115;
+              break;
+            default:
+              // Do nothing.
+              break;
+          }
+
           this.penquin = this.matter.add
-            .sprite(x + width * 0.5, y, "penquin")
+            .sprite(randomX + width * 0.5, randomY, "penquin")
             .setFixedRotation();
 
           // Negative collision group prevents player collision
