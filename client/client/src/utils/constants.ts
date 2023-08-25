@@ -1,2 +1,2 @@
-export const LABEL_X_OFFSET = -25;
-export const LABEL_Y_OFFSET = -50;
+export const USERNAME_X_OFFSET = 0;
+export const USERNAME_Y_OFFSET = -53;

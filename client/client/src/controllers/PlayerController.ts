@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import StateMachine from "../utils/StateMachine";
-import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
+import { USERNAME_X_OFFSET, USERNAME_Y_OFFSET } from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -10,11 +10,10 @@ export default class PlayerController {
   private sprite: Phaser.Physics.Matter.Sprite;
   private cursors: CursorKeys;
   private obstacles: ObstaclesController;
-  private label: Phaser.GameObjects.Text;
+  private username: Phaser.GameObjects.Text;
 
   private stateMachine: StateMachine;
 
-  private label: Phaser.GameObjects.Text;
   private speechText: Phaser.GameObjects.Text;
 
   private chatTimeoutID: any;
@@ -35,14 +34,17 @@ export default class PlayerController {
     this.stateMachine = new StateMachine(this, "player");
 
     this.speechText = scene.add.text(
-      sprite.x + LABEL_X_OFFSET - 25,
-      sprite.y + LABEL_Y_OFFSET - 25,
+      sprite.x + USERNAME_X_OFFSET - 25,
+      sprite.y + USERNAME_Y_OFFSET - 25,
       ""
     );
-    this.label = scene.add.text(
-      sprite.x + LABEL_X_OFFSET,
-      sprite.y + LABEL_Y_OFFSET,
-      username
+    this.username = scene.add.text(
+      sprite.x - username.length / 2 + USERNAME_X_OFFSET,
+      sprite.y + USERNAME_Y_OFFSET,
+      username,
+      {
+        color: "#F9DE04",
+      }
     );
 
     this.stateMachine
@@ -96,11 +98,15 @@ export default class PlayerController {
       res = this.stateMachine.getCurrentStateName();
     }
 
-    this.label.x = this.sprite.body.position.x + LABEL_X_OFFSET;
-    this.label.y = this.sprite.body.position.y + LABEL_Y_OFFSET;
+    this.username.x =
+      this.sprite.body.position.x - this.username.width / 2 + USERNAME_X_OFFSET;
+    this.username.y = this.sprite.body.position.y + USERNAME_Y_OFFSET;
 
-    this.speechText.x = this.sprite.body.position.x + LABEL_X_OFFSET;
-    this.speechText.y = this.sprite.body.position.y + LABEL_Y_OFFSET - 25;
+    this.speechText.x =
+      this.sprite.body.position.x -
+      this.speechText.width / 2 +
+      USERNAME_X_OFFSET;
+    this.speechText.y = this.sprite.body.position.y + USERNAME_Y_OFFSET - 25;
 
     return res;
   }
