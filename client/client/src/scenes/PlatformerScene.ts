@@ -425,11 +425,8 @@ export default class Platformer extends Phaser.Scene {
     this.crdt.observeChatHistoryRemote(
       (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
         if (this.chatHistoryRemotePointer === undefined) {
-          if (
-            chatHistoryRemote.length === 1 &&
-            chatHistoryRemote[0].id === this.crdt.getClientID()
-          ) {
-            // There is no remote chat history, and now there is one from myself.
+          if (chatHistoryRemote.length === 1) {
+            // There is no remote chat history, and now there is one from me or peer.
             this.chatHistoryRemotePointer = 0;
           } else {
             // I just joined the world no matter if there is remote chat history.
@@ -461,6 +458,10 @@ export default class Platformer extends Phaser.Scene {
           i < chatHistoryRemote.length;
           i++
         ) {
+          if (chatHistoryRemote[i].text.length === 0) {
+            continue;
+          }
+
           this.infoPanel.getElement("panel")!.add(
             this.rexUI.add.label({
               orientation: "horizontal",

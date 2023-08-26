@@ -106,6 +106,16 @@ export default class CRDT {
 
   setText(text: TextContent) {
     this.state.text = text;
+
+    setTimeout(() => {
+      const nullifierText = {
+        text: "",
+        timestamp: 0,
+      };
+
+      this.state.text = nullifierText;
+      this.setChatHistoryRemote(nullifierText);
+    }, 5 * 1000);
   }
 
   setChatHistoryRemote(text: TextContent) {
