@@ -50,6 +50,8 @@ export default class CRDT {
     }
 
     this.provider.awareness.on("change", (changes: any) => {
+      console.log(`CRDT: Awareness change ${changes}.`);
+
       const states = this.provider.awareness.getStates();
 
       const setState = (clientID: number) => {
