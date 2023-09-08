@@ -1,11 +1,11 @@
 import Phaser from "phaser";
-import DefaultButton from "../ui-components/defaultButton";
+import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
+import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
 import config from "../config";
 import CRDT from "../networking/crdt";
-import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
-import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
-import Peer from "simple-peer";
-import { Connection, PeerInfo } from "./types";
+import Media from "../networking/media";
+import DefaultButton from "../ui-components/defaultButton";
+import { PeerInfo } from "./types";
 
 interface connectionContainer {
   yourId: IText;
@@ -39,7 +39,6 @@ export default class Demo extends Phaser.Scene {
     this.renderAcceptButton();
     this.renderWelcomeMessage();
     this.renderInputText();
-    this.renderPlatformerButton();
   }
   renderPlatformerButton() {
     var connectButton = this.add.existing(
@@ -47,15 +46,19 @@ export default class Demo extends Phaser.Scene {
         this,
         "Enter Platformer",
         (config.scale.width / 4) * 2,
-        config.scale.height / 4 - 100,
+        config.scale.height / 2,
         config.scale.width / 4 - 10,
         "large",
         () => {
+          const crdt = new CRDT();
+          const media = new Media(crdt.getClientID());
+
           this.removeSignalEvent();
           this.scene.start("platformer", {
             peers: this.game.config.connections.getConnections(),
             username: this.username,
-            crdt: new CRDT(),
+            crdt: crdt,
+            media: media,
           });
         }
       )
@@ -123,8 +126,7 @@ export default class Demo extends Phaser.Scene {
             this.dialogue?.setText(`Username : ${newUsername}`);
             this._connectButton.destroy();
             this.inputText?.destroy();
-            this.renderInitializeConnectButton();
-            this.renderRespondToConnectButton();
+            this.renderPlatformerButton();
           }
         }
       )

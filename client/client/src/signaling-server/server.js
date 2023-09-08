@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
-import http from "http";
+import { readFileSync } from "fs";
+import https from "https";
 import * as map from "lib0/map";
 import ws from "ws";
 
@@ -11,14 +12,21 @@ const wsReadyStateClosed = 3; // eslint-disable-line
 
 const pingTimeout = 30000;
 
-const port = process.env.PORT || 4444;
+const port = process.env.PORT || 443;
 // @ts-ignore
 const wss = new ws.Server({ noServer: true });
 
-const server = http.createServer((request, response) => {
+const options = {
+  key: readFileSync("./src/signaling-server/tls/localhost.key"),
+  cert: readFileSync("./src/signaling-server/tls/localhost.crt"),
+};
+
+const server = https.createServer(options, (request, response) => {
   response.writeHead(200, { "Content-Type": "text/plain" });
   response.end("okay");
 });
+
+const peers = {};
 
 /**
  * Map froms topic-name to set of subscribed clients.
@@ -48,7 +56,8 @@ const send = (conn, message) => {
  * Setup a new client
  * @param {any} conn
  */
-const onconnection = (conn) => {
+const onConnection = (conn) => {
+  console.log("New connection");
   /**
    * @type {Set<string>}
    */
@@ -73,6 +82,8 @@ const onconnection = (conn) => {
     pongReceived = true;
   });
   conn.on("close", () => {
+    onClose(conn);
+
     subscribedTopics.forEach((topicName) => {
       const subs = topics.get(topicName) || new Set();
       subs.delete(conn);
@@ -129,12 +140,81 @@ const onconnection = (conn) => {
             break;
           case "ping":
             send(conn, { type: "pong" });
+            break;
+          case "join":
+            onJoin(conn, message);
+            break;
+          case "send_signal":
+            onSendSignal(conn, message);
+            break;
         }
       }
     }
   );
 };
-wss.on("connection", onconnection);
+
+const onJoin = (conn, message) => {
+  // NOTE: In here, ID is clienID of CRDT.
+  conn.id = message.from;
+
+  if (peers.hasOwnProperty(message.from)) {
+    console.log(`Peer ${message.from} is already joined.`);
+    return;
+  }
+
+  for (const peerID in peers) {
+    // An existing peer connects to new peer.
+    send(peers[peerID], {
+      type: "connect_peer",
+      from: message.from,
+      shouldCreateOffer: false,
+    });
+
+    // A new peer connects to existing peer
+    send(conn, {
+      type: "connect_peer",
+      from: Number(peerID),
+      shouldCreateOffer: true,
+    });
+  }
+
+  peers[message.from] = conn;
+};
+
+const onSendSignal = (conn, message) => {
+  if (conn.id !== message.from) {
+    console.log(`ID ${conn.id} and sender ${message.from} are different.`);
+    return;
+  }
+
+  send(peers[message.to], {
+    type: "receive_signal",
+    from: message.from,
+    signal: message.signal,
+  });
+};
+
+const onClose = (conn) => {
+  if (conn.id) {
+    delete peers[conn.id];
+
+    for (const peerID in peers) {
+      // An existing peer disconnects with the closed peer.
+      send(peers[peerID], {
+        type: "disconnect_peer",
+        from: conn.id,
+      });
+
+      // The closed peer disconnects with existing peer.
+      send(conn, {
+        type: "disconnect_peer",
+        from: Number(peerID),
+      });
+    }
+  }
+};
+
+wss.on("connection", onConnection);
 
 server.on("upgrade", (request, socket, head) => {
   // You may check auth of request here..

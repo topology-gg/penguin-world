@@ -4,9 +4,15 @@ import {
   PositionContent,
   SimulatedCursor,
   TextContent,
+  UsernameContent,
 } from "../scenes/types";
 import StateMachine from "../utils/StateMachine";
-import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
+import {
+  TEXT_CHAT_X_OFFSET,
+  TEXT_CHAT_Y_OFFSET,
+  USERNAME_X_OFFSET,
+  USERNAME_Y_OFFSET,
+} from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 const initCursor: SimulatedCursor = {
@@ -27,7 +33,7 @@ export default class CharacterController {
 
   private stateMachine: StateMachine;
   private cursors: SimulatedCursor;
-  private label: Phaser.GameObjects.Text;
+  private username: Phaser.GameObjects.Text;
   private speechText: Phaser.GameObjects.Text;
   private textHistory: Array<TextContent> = new Array();
 
@@ -47,14 +53,27 @@ export default class CharacterController {
     this.stateMachine = new StateMachine(this, username);
 
     this.speechText = scene.add.text(
-      sprite.x + LABEL_X_OFFSET - 25,
-      sprite.y + LABEL_Y_OFFSET - 25,
-      ""
+      sprite.x + TEXT_CHAT_X_OFFSET,
+      sprite.y + TEXT_CHAT_Y_OFFSET,
+      "",
+      {
+        wordWrap: {
+          width: 300,
+          useAdvancedWrap: true,
+        },
+        align: "center",
+        maxLines: 5,
+      }
     );
-    this.label = scene.add.text(
-      sprite.x + LABEL_X_OFFSET,
-      sprite.y + LABEL_Y_OFFSET,
-      username
+    this.username = scene.add.text(
+      sprite.x + USERNAME_X_OFFSET,
+      sprite.y + USERNAME_Y_OFFSET,
+      username,
+      {
+        color: "#32D003",
+        fixedWidth: 150,
+        align: "center",
+      }
     );
 
     this.stateMachine
@@ -93,6 +112,16 @@ export default class CharacterController {
 
   destroy() {
     this.sprite.destroy(true);
+    this.username.destroy(true);
+    this.speechText.destroy(true);
+  }
+
+  setUsername(username: UsernameContent) {
+    this.username.text = username.username;
+  }
+
+  getUsername() {
+    return this.username.text;
   }
 
   chat(text: TextContent) {
@@ -111,11 +140,16 @@ export default class CharacterController {
   }
 
   updateLabels() {
-    this.label.x = this.sprite.x + LABEL_X_OFFSET;
-    this.label.y = this.sprite.y + LABEL_Y_OFFSET;
+    this.username.x =
+      this.sprite.body.position.x - this.username.width / 2 + USERNAME_X_OFFSET;
+    this.username.y = this.sprite.y + USERNAME_Y_OFFSET;
 
-    this.speechText.x = this.sprite.x + LABEL_X_OFFSET;
-    this.speechText.y = this.sprite.y + LABEL_Y_OFFSET - 25;
+    this.speechText.x =
+      this.sprite.body.position.x -
+      this.speechText.width / 2 +
+      TEXT_CHAT_X_OFFSET;
+    this.speechText.y =
+      this.sprite.body.position.y - this.speechText.height + TEXT_CHAT_Y_OFFSET;
   }
   update(dt: number) {
     this.stateMachine.update(dt);

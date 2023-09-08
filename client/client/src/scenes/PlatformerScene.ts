@@ -5,20 +5,28 @@ import type {
   Connection,
   PeerData,
   PeerMessage,
+  State,
   platformerSceneData,
 } from "./types";
 
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
 import InputText from "phaser3-rex-plugins/plugins/inputtext.js";
+import ScrollablePanel from "phaser3-rex-plugins/templates/ui/scrollablepanel/ScrollablePanel";
 import config from "../config";
 import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
-import { keyboardInputKeys } from "../utils/keys";
+import Media from "../networking/media";
+import { CRDT_CHAT_HISTORY_REMOTE } from "../networking/messages/crdt";
 import { MessageType } from "./enums";
 
 interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
+}
+
+enum PEER_PRESENCE {
+  JOINED = "joined",
+  LEFT = "left",
 }
 
 export default class Platformer extends Phaser.Scene {
@@ -32,7 +40,18 @@ export default class Platformer extends Phaser.Scene {
 
   private lastPosBroadcast: number = 0;
 
-  private chatBox: InputText | undefined;
+  private chatBox: InputText;
+  private chatHistoryLocal: Array<string> = [];
+  private chatHistoryLocalPointer: number = 0;
+  private chatHistoryRemotePointer: number | undefined = undefined;
+  private chatSaved: string = "";
+
+  private infoPanel: ScrollablePanel;
+  private infoPanelHasScrolled: boolean = false;
+  private readonly COLOR_LIGHT = 0x24b5d2;
+  private readonly COLOR_DARK = 0x1184bf;
+  private readonly COLOR_CHAT = 0x508bc5;
+  private readonly COLOR_PRESENCE = 0xce70ee;
 
   private username: string;
 
@@ -41,6 +60,7 @@ export default class Platformer extends Phaser.Scene {
   private whiteboard: Whiteboard;
 
   private crdt: CRDT;
+  private media: Media;
   private peers: Map<number, CharacterController> = new Map();
 
   constructor() {
@@ -54,6 +74,7 @@ export default class Platformer extends Phaser.Scene {
     this.connectedPlayers = data.peers;
     this.username = data.username;
     this.crdt = data.crdt;
+    this.media = data.media;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.destroy();
     });
@@ -102,6 +123,9 @@ export default class Platformer extends Phaser.Scene {
     this.load.image("health", "assets/health.png");
 
     this.load.atlas("snowman", "assets/snowman.png", "assets/snowman.json");
+
+    this.load.image("mute", "assets/mute.png");
+    this.load.image("unmute", "assets/unmute.png");
   }
 
   renderChatBox() {
@@ -109,7 +133,7 @@ export default class Platformer extends Phaser.Scene {
       text: "",
       color: "black",
       border: 1,
-      backgroundColor: "rgba(255,255,255,0.5)",
+      backgroundColor: "rgba(190,190,190,0.8)",
       placeholder: "Send messages here",
     };
     var inputText = new InputText(
@@ -128,32 +152,197 @@ export default class Platformer extends Phaser.Scene {
     this.chatBox = inputText;
   }
 
-  appendKey({ key }: any) {
-    this.chatBox?.setText(this.chatBox?.text + key);
+  renderMic() {
+    const posX = config.scale.width - 574;
+    const posY = config.scale.height - 48;
+
+    const mute = this.add
+      .sprite(posX, posY, "mute")
+      .setDepth(1)
+      .setScrollFactor(0, 0)
+      .setInteractive();
+
+    const unmute = this.add
+      .sprite(posX, posY, "unmute")
+      .setDepth(1)
+      .setScrollFactor(0, 0)
+      .setInteractive()
+      .setAlpha(0); // Mute by default.
+
+    mute.on("pointerdown", () => {
+      mute.setAlpha(0);
+      unmute.clearAlpha();
+      this.media.unmute();
+    });
+
+    unmute.on("pointerdown", () => {
+      unmute.setAlpha(0);
+      mute.clearAlpha();
+      this.media.mute();
+    });
+  }
+
+  renderInfoPanel() {
+    this.infoPanel = this.rexUI.add
+      .scrollablePanel({
+        x: config.scale.width - 275,
+        y: config.scale.height - 250,
+        width: 500,
+        height: 300,
+        scrollMode: "vertical",
+        background: this.rexUI.add.roundRectangle({
+          strokeColor: this.COLOR_LIGHT,
+          radius: 10,
+        }),
+        panel: {
+          child: this.rexUI.add.sizer({
+            orientation: "vertical",
+            space: { item: 10, top: 5, bottom: 5, right: 10 },
+          }),
+        },
+        mouseWheelScroller: {
+          focus: true,
+          speed: 0.1,
+        },
+        slider: {
+          track: this.rexUI.add.roundRectangle({
+            width: 3,
+            radius: 3,
+            color: this.COLOR_DARK,
+            alpha: 0.4,
+          }),
+          thumb: this.rexUI.add.roundRectangle({
+            width: 8,
+            radius: 8,
+            color: this.COLOR_LIGHT,
+            alpha: 0.75,
+          }),
+        },
+        space: {
+          left: 15,
+          right: 15,
+          top: 10,
+          bottom: 10,
+        },
+      })
+      .setDepth(1)
+      .setScrollFactor(0, 0)
+      .layout();
   }
 
   create() {
     this.initializePeers(this.connectedPlayers);
     this.renderChatBox();
+    this.renderMic();
+    this.renderInfoPanel();
 
-    this.chatBox?.on("click", this.focusChatBox);
+    this.chatBox.on("focus", this.focusChatBox);
+    this.chatBox.on("blur", this.blurChatBox);
+
+    this.plugins
+      .get("rexClickOutside")
+      .add(this.chatBox, {
+        enable: true,
+        mode: 0, // Fire click event upon press. Set it 1 to fire event upon release.
+      })
+      .on("clickoutside", () => {
+        this.chatBox.setBlur();
+      });
 
     this.input.keyboard.on("keydown-" + "ENTER", () => {
-      this.sendMessage();
+      if (this.chatBox.isFocused === true) {
+        this.sendMessage();
+        this.chatBox.setBlur();
+      } else {
+        this.chatBox.setFocus();
+      }
     });
 
-    keyboardInputKeys.forEach((key) => {
-      this.input.keyboard.on(`keydown-${key}`, this.appendKey);
-    });
-
-    this.input.keyboard.on("keydown-" + "BACKSPACE", () => {
-      this.chatBox?.setText(
-        this.chatBox?.text.slice(0, this.chatBox?.text.length)
-      );
+    this.input.keyboard.on("keydown-" + "ESC", () => {
+      if (this.chatBox.isFocused === true) {
+        this.chatBox.setBlur();
+      }
     });
 
     this.input.keyboard.on("keydown-" + "SPACE", () => {
-      this.chatBox?.setText(this.chatBox?.text + " ");
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      if (this.chatBox === undefined) {
+        return;
+      }
+
+      const oldText = this.chatBox.text;
+      const oldCursorPosition = this.chatBox.cursorPosition;
+      const newText =
+        oldText.slice(0, oldCursorPosition) +
+        " " +
+        oldText.slice(oldCursorPosition);
+      const newCursorPosition = oldCursorPosition + 1;
+
+      this.chatBox.setText(newText);
+      this.chatBox.setCursorPosition(newCursorPosition);
+    });
+
+    this.input.keyboard.on("keydown-" + "LEFT", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      this.chatBox.setCursorPosition(this.chatBox.cursorPosition - 1);
+    });
+
+    this.input.keyboard.on("keydown-" + "RIGHT", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      this.chatBox.setCursorPosition(this.chatBox.cursorPosition + 1);
+    });
+
+    this.input.keyboard.on("keydown-" + "UP", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      if (this.chatHistoryLocalPointer === 0) {
+        // End of chat history.
+        return;
+      }
+
+      if (this.chatHistoryLocalPointer === this.chatHistoryLocal.length) {
+        // Start to rewind chat history.
+        this.chatSaved = this.chatBox.text || "";
+      }
+
+      this.chatHistoryLocalPointer--;
+
+      this.chatBox.setText(this.chatHistoryLocal[this.chatHistoryLocalPointer]);
+    });
+
+    this.input.keyboard.on("keydown-" + "DOWN", () => {
+      if (this.chatBox.isFocused === false) {
+        return;
+      }
+
+      if (this.chatHistoryLocalPointer === this.chatHistoryLocal.length) {
+        return;
+      }
+
+      this.chatHistoryLocalPointer++;
+
+      let text: string;
+
+      if (this.chatHistoryLocalPointer === this.chatHistoryLocal.length) {
+        // End of chat history.
+        text = this.chatSaved;
+      } else {
+        // Start to fast forward chat history.
+        text = this.chatHistoryLocal[this.chatHistoryLocalPointer];
+      }
+
+      this.chatBox.setText(text);
     });
 
     const map = this.make.tilemap({ key: "tilemap" });
@@ -171,9 +360,32 @@ export default class Platformer extends Phaser.Scene {
 
       switch (name) {
         case "penquin-spawn": {
-          console.log(x + width * 0.5, y);
+          const clientID = this.crdt.getClientID();
+          const zone = clientID % 3;
+
+          let randomX: number = 1050;
+          let randomY: number = 490;
+
+          switch (zone) {
+            case 0:
+              randomX = (clientID % 730) + 450;
+              randomY = (clientID % 130) + 390;
+              break;
+            case 1:
+              randomX = (clientID % 465) + 1555;
+              randomY = (clientID % 180) + 50;
+              break;
+            case 2:
+              randomX = (clientID % 620) + 280;
+              randomY = (clientID % 125) - 115;
+              break;
+            default:
+              // Do nothing.
+              break;
+          }
+
           this.penquin = this.matter.add
-            .sprite(x + width * 0.5, y, "penquin")
+            .sprite(randomX + width * 0.5, randomY, "penquin")
             .setFixedRotation();
 
           // Negative collision group prevents player collision
@@ -209,6 +421,82 @@ export default class Platformer extends Phaser.Scene {
     );
 
     this.crdt.aware();
+    this.crdt.setUsername({ username: this.username });
+    this.crdt.observeChatHistoryRemote(
+      (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
+        if (this.chatHistoryRemotePointer === undefined) {
+          if (chatHistoryRemote.length === 1) {
+            // There is no remote chat history, and now there is one from me or peer.
+            this.chatHistoryRemotePointer = 0;
+          } else {
+            // I just joined the world no matter if there is remote chat history.
+            this.chatHistoryRemotePointer = chatHistoryRemote.length;
+            return;
+          }
+        }
+
+        const chatBackground = this.rexUI.add.roundRectangle(
+          Number.MAX_SAFE_INTEGER, // x
+          Number.MAX_SAFE_INTEGER, // y
+          440, // width
+          50, // height
+          20, // radiusConfig
+          this.COLOR_CHAT, // fillColor
+          0.8 // fillAlpha
+        );
+
+        const sliderPosition = this.infoPanel.getElement("slider")!.value;
+        const shouldScrollToBottom =
+          sliderPosition >= 0.95 || !this.infoPanelHasScrolled;
+
+        if (sliderPosition > 0) {
+          this.infoPanelHasScrolled = true;
+        }
+
+        for (
+          let i = this.chatHistoryRemotePointer;
+          i < chatHistoryRemote.length;
+          i++
+        ) {
+          if (chatHistoryRemote[i].text.length === 0) {
+            continue;
+          }
+
+          this.infoPanel.getElement("panel")!.add(
+            this.rexUI.add.label({
+              orientation: "horizontal",
+              width: chatBackground.displayWidth,
+              background: chatBackground,
+              space: {
+                left: 10,
+                right: 10,
+                top: 10,
+                bottom: 10,
+              },
+              text: this.add.text(
+                0, // x
+                0, // y
+                `${chatHistoryRemote[i].username}: ${chatHistoryRemote[i].text}`, // text
+                {
+                  wordWrap: {
+                    width: 420,
+                    useAdvancedWrap: true,
+                  },
+                } // style
+              ),
+              align: "left",
+            })
+          );
+        }
+        this.infoPanel.setDepth(1).setScrollFactor(0, 0).layout();
+
+        if (shouldScrollToBottom === true) {
+          this.infoPanel.scrollToBottom();
+        }
+
+        this.chatHistoryRemotePointer = chatHistoryRemote.length;
+      }
+    );
   }
 
   shareWhiteboardLink(link: string) {
@@ -236,26 +524,32 @@ export default class Platformer extends Phaser.Scene {
   updatePeers(t: number, dt: number) {
     if (this.playerController !== undefined) {
       // Update my penguin.
-      this.playerController.update(dt);
+      const shouldUpdateState = this.chatBox.isFocused === false;
 
-      // Broadcast my states to peers.
-      this.crdt.broadcastPosition(this.playerController.getPosition());
-      this.crdt.broadcastInput({
-        input: this.playerController.getStateName(),
+      this.playerController.update(dt, shouldUpdateState);
+
+      // Update my state.
+      this.crdt.setPosition(this.playerController.getPosition());
+      this.crdt.setInput({
         cursor: this.playerController.serializeCursor(),
+        input: this.playerController.getStateName(),
         dt: 0, // dt is not being used as of now.
       });
+
+      // Broadcast my state to peers.
+      this.crdt.broadcastState();
     }
 
     // Update peer penguins.
     const peers = this.crdt.getPeers();
 
     for (const [clientID, peer] of peers) {
-      if (this.peers.has(clientID) === false) {
-        this.peers.set(clientID, this.initPeer());
-      }
-
       if (peer.get(CRDT_STATE.REMOVED) === true) {
+        this.informPeerPresence(
+          this.peers.get(clientID)!.getUsername(),
+          PEER_PRESENCE.LEFT
+        );
+
         this.peers.get(clientID)!.destroy();
         this.peers.delete(clientID);
 
@@ -264,16 +558,41 @@ export default class Platformer extends Phaser.Scene {
         return;
       }
 
-      if (peer.get(CRDT_STATE.INPUT)) {
-        this.peers.get(clientID)!.simulateInput(peer.get(CRDT_STATE.INPUT));
+      const state: State | undefined = peer.get(CRDT_STATE.STATE);
+
+      if (state === undefined) {
+        return;
       }
 
-      if (peer.get(CRDT_STATE.POSITION)) {
-        this.peers.get(clientID)!.moveSprite(peer.get(CRDT_STATE.POSITION));
+      if (this.peers.has(clientID) === false) {
+        this.peers.set(clientID, this.initPeer());
+
+        const username = state.username;
+
+        if (username) {
+          this.peers.get(clientID)!.setUsername(username);
+        }
+
+        this.informPeerPresence(
+          username ? username.username : " ",
+          PEER_PRESENCE.JOINED
+        );
       }
 
-      if (peer.get(CRDT_STATE.TEXT)) {
-        this.peers.get(clientID)!.chat(peer.get(CRDT_STATE.TEXT));
+      const position = state.position;
+      const input = state.input;
+      const text = state.text;
+
+      if (position) {
+        this.peers.get(clientID)!.moveSprite(position);
+      }
+
+      if (input) {
+        this.peers.get(clientID)!.simulateInput(input);
+      }
+
+      if (text) {
+        this.peers.get(clientID)!.chat(text);
       }
     }
 
@@ -308,56 +627,32 @@ export default class Platformer extends Phaser.Scene {
   }
 
   sendMessage() {
-    if (this.chatBox?.text) {
-      this.crdt.broadcastText({
-        text: this.chatBox.text,
-        timestamp: this.time.now,
-      });
+    if (this.chatBox.text.length === 0) {
+      return;
     }
 
-    this.connectedPlayers.forEach((connectedPlayer) => {
-      let message = JSON.stringify({
-        type: MessageType.MESSAGE,
-        content: this.chatBox?.text,
-      });
-
-      connectedPlayer.peer.send(message);
-    });
-
-    this.userMessages.push({
-      content: this.chatBox?.text || "",
+    const text = {
+      text: this.chatBox.text,
       timestamp: this.time.now,
-    });
+    };
 
-    this.playerController?.chat(this.chatBox?.text);
-    this.chatBox?.setText("");
+    this.crdt.setText(text);
+    this.crdt.setChatHistoryRemote(text);
+    this.chatHistoryLocal.push(this.chatBox.text);
+
+    this.playerController?.chat(this.chatBox.text);
+    this.chatBox.setText("");
+    this.chatSaved = "";
+    this.chatHistoryLocalPointer = this.chatHistoryLocal.length;
   }
 
-  focusChatBox() {
-    this.chatBox?.setStyle("backgroundColor", "rgba(2,2,2,1)");
+  focusChatBox = () => {
+    this.chatBox.setStyle("backgroundColor", "rgba(255,255,255,0.9)");
+  };
 
-    //this.initChatEvents();
-  }
-
-  initChatEvents() {
-    this.input.keyboard.on("keydown-" + "ENTER", () => {
-      this.sendMessage();
-    });
-
-    keyboardInputKeys.forEach((key) => {
-      this.input.keyboard.on(`keydown-${key}`, this.appendKey);
-    });
-
-    this.input.keyboard.on("keydown-" + "BACKSPACE", () => {
-      this.chatBox?.setText(
-        this.chatBox?.text.slice(0, this.chatBox?.text.length)
-      );
-    });
-
-    this.input.keyboard.on("keydown-" + "SPACE", () => {
-      this.chatBox?.setText(this.chatBox?.text + " ");
-    });
-  }
+  blurChatBox = () => {
+    this.chatBox.setStyle("backgroundColor", "rgba(190,190,190,0.8)");
+  };
 
   private initPeer(
     x: number = 0,
@@ -369,5 +664,57 @@ export default class Platformer extends Phaser.Scene {
     penguin.setCollisionGroup(-1);
 
     return new CharacterController(this, penguin, this.obstacles, username);
+  }
+
+  // TODO: Refactor codes adding new info to info panel.
+  private informPeerPresence(username: string, presence: PEER_PRESENCE) {
+    const presenceBackground = this.rexUI.add.roundRectangle(
+      Number.MAX_SAFE_INTEGER, // x
+      Number.MAX_SAFE_INTEGER, // y
+      440, // width
+      50, // height
+      20, // radiusConfig
+      this.COLOR_PRESENCE, // fillColor
+      0.8 // fillAlpha
+    );
+
+    const sliderPosition = this.infoPanel.getElement("slider")!.value;
+    const shouldScrollToBottom =
+      sliderPosition >= 0.95 || !this.infoPanelHasScrolled;
+
+    if (sliderPosition > 0) {
+      this.infoPanelHasScrolled = true;
+    }
+
+    this.infoPanel.getElement("panel")!.add(
+      this.rexUI.add.label({
+        orientation: "horizontal",
+        width: presenceBackground.displayWidth,
+        background: presenceBackground,
+        space: {
+          left: 10,
+          right: 10,
+          top: 10,
+          bottom: 10,
+        },
+        text: this.add.text(
+          0, // x
+          0, // y
+          `${username} ${presence}`, // text
+          {
+            wordWrap: {
+              width: 420,
+              useAdvancedWrap: true,
+            },
+          } // style
+        ),
+        align: "left",
+      })
+    );
+    this.infoPanel.setDepth(1).setScrollFactor(0, 0).layout();
+
+    if (shouldScrollToBottom === true) {
+      this.infoPanel.scrollToBottom();
+    }
   }
 }

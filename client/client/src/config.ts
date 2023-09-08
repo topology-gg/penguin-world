@@ -1,8 +1,9 @@
 import Phaser from "phaser";
-import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
-import RoundRectanglePlugin from "phaser3-rex-plugins/plugins/roundrectangle-plugin.js";
 import ButtonPlugin from "phaser3-rex-plugins/plugins/button-plugin.js";
-import InputTextPlugin from 'phaser3-rex-plugins/plugins/inputtext-plugin.js'
+import ClickOutsidePlugin from "phaser3-rex-plugins/plugins/clickoutside-plugin.js";
+import InputTextPlugin from "phaser3-rex-plugins/plugins/inputtext-plugin.js";
+import RoundRectanglePlugin from "phaser3-rex-plugins/plugins/roundrectangle-plugin.js";
+import RexUIPlugin from "phaser3-rex-plugins/templates/ui/ui-plugin.js";
 
 export default {
   type: Phaser.AUTO,
@@ -15,14 +16,14 @@ export default {
     height: window.innerHeight,
   },
   dom: {
-    createContainer: true
-},     
+    createContainer: true,
+  },
   physics: {
-		default: 'matter',
-		matter: {
-			debug: true
-		}
-	},
+    default: "matter",
+    matter: {
+      debug: true,
+    },
+  },
   plugins: {
     scene: [
       {
@@ -43,10 +44,15 @@ export default {
         start: true,
       },
       {
-        key: 'rexInputTextPlugin',
+        key: "rexInputTextPlugin",
         plugin: InputTextPlugin,
-        start: true
-    }
+        start: true,
+      },
+      {
+        key: "rexClickOutside",
+        plugin: ClickOutsidePlugin,
+        start: true,
+      },
     ],
   },
 };

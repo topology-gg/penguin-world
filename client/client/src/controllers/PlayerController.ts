@@ -1,6 +1,11 @@
 import Phaser from "phaser";
 import StateMachine from "../utils/StateMachine";
-import { LABEL_X_OFFSET, LABEL_Y_OFFSET } from "../utils/constants";
+import {
+  TEXT_CHAT_X_OFFSET,
+  TEXT_CHAT_Y_OFFSET,
+  USERNAME_X_OFFSET,
+  USERNAME_Y_OFFSET,
+} from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
 
 type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
@@ -10,11 +15,10 @@ export default class PlayerController {
   private sprite: Phaser.Physics.Matter.Sprite;
   private cursors: CursorKeys;
   private obstacles: ObstaclesController;
-  private label: Phaser.GameObjects.Text;
+  private username: Phaser.GameObjects.Text;
 
   private stateMachine: StateMachine;
 
-  private label: Phaser.GameObjects.Text;
   private speechText: Phaser.GameObjects.Text;
 
   private chatTimeoutID: any;
@@ -35,14 +39,27 @@ export default class PlayerController {
     this.stateMachine = new StateMachine(this, "player");
 
     this.speechText = scene.add.text(
-      sprite.x + LABEL_X_OFFSET - 25,
-      sprite.y + LABEL_Y_OFFSET - 25,
-      ""
+      sprite.x + TEXT_CHAT_X_OFFSET,
+      sprite.y + TEXT_CHAT_Y_OFFSET,
+      "",
+      {
+        wordWrap: {
+          width: 300,
+          useAdvancedWrap: true,
+        },
+        align: "center",
+        maxLines: 5,
+      }
     );
-    this.label = scene.add.text(
-      sprite.x + LABEL_X_OFFSET,
-      sprite.y + LABEL_Y_OFFSET,
-      username
+    this.username = scene.add.text(
+      sprite.x + USERNAME_X_OFFSET,
+      sprite.y + USERNAME_Y_OFFSET,
+      username,
+      {
+        color: "#F9DE04",
+        fixedWidth: 150,
+        align: "center",
+      }
     );
 
     this.stateMachine
@@ -87,13 +104,26 @@ export default class PlayerController {
     }, 5 * 1000);
   }
 
-  update(dt: number) {
-    let res = this.stateMachine.update(dt);
-    this.label.x = this.sprite.body.position.x + LABEL_X_OFFSET;
-    this.label.y = this.sprite.body.position.y + LABEL_Y_OFFSET;
+  update(dt: number, shouldUpdateState: boolean | undefined) {
+    let res: string | undefined;
 
-    this.speechText.x = this.sprite.body.position.x + LABEL_X_OFFSET;
-    this.speechText.y = this.sprite.body.position.y + LABEL_Y_OFFSET - 25;
+    if (shouldUpdateState === true) {
+      res = this.stateMachine.update(dt);
+    } else {
+      res = this.stateMachine.getCurrentStateName();
+    }
+
+    this.username.x =
+      this.sprite.body.position.x - this.username.width / 2 + USERNAME_X_OFFSET;
+    this.username.y = this.sprite.body.position.y + USERNAME_Y_OFFSET;
+
+    this.speechText.x =
+      this.sprite.body.position.x -
+      this.speechText.width / 2 +
+      TEXT_CHAT_X_OFFSET;
+    this.speechText.y =
+      this.sprite.body.position.y - this.speechText.height + TEXT_CHAT_Y_OFFSET;
+
     return res;
   }
 

@@ -1,28 +1,47 @@
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
-import { InputContent, PositionContent, TextContent } from "../scenes/types";
+import {
+  InputContent,
+  PositionContent,
+  State,
+  TextContent,
+  UsernameContent,
+} from "../scenes/types";
+import { CRDT_CHAT_HISTORY_REMOTE } from "./messages/crdt";
 
 export enum CRDT_STATE {
-  INPUT = "input",
-  POSITION = "position",
-  TEXT = "text",
-  REMOVED = "removed",
+  REMOVED = "REMOVED",
+  STATE = "STATE",
 }
 
 export default class CRDT {
   private doc: Y.Doc;
+  private chatHistoryRemote: Y.Array<CRDT_CHAT_HISTORY_REMOTE>;
   private provider: WebrtcProvider;
 
-  private isListening: Map<string, boolean> = new Map();
-  private peers: Map<number, Map<string, any>> = new Map();
+  private isListening: Map<string, boolean>;
+  private peers: Map<number, Map<string, any>>;
+  private state: State;
 
   private readonly AWARENESS = "AWARENESS";
 
   constructor() {
     this.doc = new Y.Doc();
+    this.chatHistoryRemote = this.doc.getArray("chat-history");
     this.provider = new WebrtcProvider("the-penguin-world", this.doc, {
-      signaling: ["ws://localhost:4444"],
+      signaling: [`${process.env.SIGNALING_SERVER}`],
     });
+
+    this.isListening = new Map();
+    this.peers = new Map();
+    this.state = {
+      username: undefined,
+      position: undefined,
+      input: undefined,
+      text: undefined,
+    };
+
+    console.log(`CRDT: Client ID is ${this.doc.clientID}.`);
   }
 
   aware() {
@@ -31,9 +50,11 @@ export default class CRDT {
     }
 
     this.provider.awareness.on("change", (changes: any) => {
+      console.log(`CRDT: Awareness change ${changes}.`);
+
       const states = this.provider.awareness.getStates();
 
-      changes.updated.forEach((clientID: number) => {
+      const setState = (clientID: number) => {
         if (clientID === this.doc.clientID) {
           return;
         }
@@ -44,20 +65,14 @@ export default class CRDT {
           return;
         }
 
-        const position = state[CRDT_STATE.POSITION];
-        const input = state[CRDT_STATE.INPUT];
-        const text = state[CRDT_STATE.TEXT];
-
         if (this.peers.has(clientID) === false) {
           this.peers.set(clientID, new Map());
         }
 
-        this.peers.get(clientID)!.set(CRDT_STATE.POSITION, position);
-        this.peers.get(clientID)!.set(CRDT_STATE.INPUT, input);
-        this.peers.get(clientID)!.set(CRDT_STATE.TEXT, text);
-      });
+        this.peers.get(clientID)!.set(CRDT_STATE.STATE, state);
+      };
 
-      changes.removed.forEach((clientID: number) => {
+      const setRemoved = (clientID: number) => {
         if (clientID === this.doc.clientID) {
           return;
         }
@@ -67,37 +82,81 @@ export default class CRDT {
         }
 
         this.peers.get(clientID)!.set(CRDT_STATE.REMOVED, true);
-      });
+      };
+
+      changes.added.forEach(setState);
+
+      changes.updated.forEach(setState);
+
+      changes.removed.forEach(setRemoved);
     });
 
     this.isListening.set(this.AWARENESS, true);
   }
 
-  broadcastPosition(position: PositionContent) {
+  setUsername(username: UsernameContent) {
+    this.state.username = username;
+  }
+
+  setPosition(position: PositionContent) {
+    this.state.position = position;
+  }
+
+  setInput(input: InputContent) {
+    this.state.input = input;
+  }
+
+  setText(text: TextContent) {
+    this.state.text = text;
+
+    setTimeout(() => {
+      const nullifierText = {
+        text: "",
+        timestamp: 0,
+      };
+
+      this.state.text = nullifierText;
+      this.setChatHistoryRemote(nullifierText);
+    }, 5 * 1000);
+  }
+
+  setChatHistoryRemote(text: TextContent) {
+    this.chatHistoryRemote.push([
+      {
+        id: this.doc.clientID,
+        username: this.state.username ? this.state.username.username : "",
+        ...text,
+      },
+    ]);
+  }
+
+  broadcastState() {
     if (this.isListening.get(this.AWARENESS) !== true) {
       return;
     }
 
-    this.provider.awareness.setLocalStateField(CRDT_STATE.POSITION, position);
+    this.provider.awareness.setLocalState(this.state);
   }
 
-  broadcastInput(input: InputContent) {
-    if (this.isListening.get(this.AWARENESS) !== true) {
-      return;
-    }
-
-    this.provider.awareness.setLocalStateField(CRDT_STATE.INPUT, input);
+  observeChatHistoryRemote(
+    callback: (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => void
+  ) {
+    this.chatHistoryRemote.observe(
+      (event: Y.YArrayEvent<CRDT_CHAT_HISTORY_REMOTE>, _: Y.Transaction) => {
+        callback(event.target.toArray());
+      }
+    );
   }
 
-  broadcastText(text: TextContent) {
-    if (this.isListening.get(this.AWARENESS) !== true) {
-      return;
-    }
-
-    this.provider.awareness.setLocalStateField(CRDT_STATE.TEXT, text);
+  getClientID(): number {
+    return this.doc.clientID;
   }
 
-  getPeers() {
+  getChatHistoryRemote(): Array<CRDT_CHAT_HISTORY_REMOTE> {
+    return this.chatHistoryRemote.toArray();
+  }
+
+  getPeers(): Map<number, Map<string, any>> {
     return this.peers;
   }
 }
