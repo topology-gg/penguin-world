@@ -170,15 +170,37 @@ export default class Platformer extends Phaser.Scene {
       .setAlpha(0); // Mute by default.
 
     mute.on("pointerdown", () => {
+      const id = this.media.getMediaStreamID();
+
+      if (id === undefined) {
+        alert("PlatformerScene: MediaStream is not ready.");
+        return;
+      }
+
+      this.crdt.setAudio({
+        id: id,
+        muted: false,
+      });
+
       mute.setAlpha(0);
       unmute.clearAlpha();
-      this.media.unmute();
     });
 
     unmute.on("pointerdown", () => {
+      const id = this.media.getMediaStreamID();
+
+      if (id === undefined) {
+        alert("PlatformerScene: MediaStream is not ready.");
+        return;
+      }
+
+      this.crdt.setAudio({
+        id: id,
+        muted: true,
+      });
+
       unmute.setAlpha(0);
       mute.clearAlpha();
-      this.media.mute();
     });
   }
 
@@ -582,6 +604,7 @@ export default class Platformer extends Phaser.Scene {
       const position = state.position;
       const input = state.input;
       const text = state.text;
+      const audio = state.audio;
 
       if (position) {
         this.peers.get(clientID)!.moveSprite(position);
@@ -593,6 +616,10 @@ export default class Platformer extends Phaser.Scene {
 
       if (text) {
         this.peers.get(clientID)!.chat(text);
+      }
+
+      if (audio && audio.id) {
+        this.media.controlMediaStreamByID(audio.id, audio.muted);
       }
     }
 

@@ -52,19 +52,25 @@ export default class Media {
       .catch((e: Error) => {
         console.log("Media: Failed to prepare media stream.\n", e);
 
-        alert("Failed to have an access to the microphone.");
+        alert("Media: Failed to have an access to the microphone.");
 
         this.stream = undefined;
         this.isPrepared = false;
       });
   };
 
-  mute() {
-    // this.audio.muted = true;
+  getMediaStreamID() {
+    return this.stream?.id;
   }
 
-  unmute() {
-    // this.audio.muted = false;
+  controlMediaStreamByID(id: string, muted: boolean) {
+    const audio = this.audio.get(id);
+
+    if (audio === undefined) {
+      return;
+    }
+
+    audio.muted = muted;
   }
 
   private sendMessage(message: MEDIA_REQUEST_MESSAGE) {

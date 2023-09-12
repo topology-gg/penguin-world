@@ -1,6 +1,7 @@
 import { WebrtcProvider } from "y-webrtc";
 import * as Y from "yjs";
 import {
+  AudioContent,
   InputContent,
   PositionContent,
   State,
@@ -39,6 +40,7 @@ export default class CRDT {
       position: undefined,
       input: undefined,
       text: undefined,
+      audio: undefined,
     };
 
     console.log(`CRDT: Client ID is ${this.doc.clientID}.`);
@@ -128,6 +130,10 @@ export default class CRDT {
         ...text,
       },
     ]);
+  }
+
+  setAudio(audio: AudioContent) {
+    this.state.audio = audio;
   }
 
   broadcastState() {
