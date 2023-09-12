@@ -56,11 +56,17 @@ interface UsernameContent {
   username: string;
 }
 
+interface AudioContent {
+  id: string;
+  muted: boolean;
+}
+
 interface State {
   username: UsernameContent | undefined;
   position: PositionContent | undefined;
   input: InputContent | undefined;
   text: TextContent | undefined;
+  audio: AudioContent | undefined;
 }
 
 interface PeerData {
