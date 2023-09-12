@@ -14,10 +14,10 @@ import {
 export default class Media {
   private id: number;
   private ws: WebSocket;
-  private audio: HTMLAudioElement;
+  private audio: Map<string, HTMLAudioElement> = new Map(); // Map from `streamID` to `HTMLAudioElement`.
   private stream: MediaStream | undefined;
   private isPrepared: boolean = false;
-  private peers: Map<number, SimplePeer.Instance> = new Map();
+  private peers: Map<number, SimplePeer.Instance> = new Map(); // Map from `peerID` to `SimplePeer.Instance`.
 
   private readonly CHANNEL_NAME = "esotere";
 
@@ -26,8 +26,6 @@ export default class Media {
     this.ws = new WebSocket(`${process.env.SIGNALING_SERVER}`);
     this.ws.onopen = this.prepareAndJoin;
     this.ws.onmessage = this.receiveMessage;
-    this.audio = document.createElement("audio");
-    document.body.appendChild(this.audio);
   }
 
   prepareAndJoin = () => {
@@ -44,7 +42,7 @@ export default class Media {
     navigator.mediaDevices
       .getUserMedia({ audio: true, video: false })
       .then((stream: MediaStream) => {
-        console.log("Media: Succeed to prepare media stream.");
+        console.log(`Media: Succeed to prepare media stream ${stream.id}.`);
 
         this.stream = stream;
         this.isPrepared = true;
@@ -62,11 +60,11 @@ export default class Media {
   };
 
   mute() {
-    this.audio.muted = true;
+    // this.audio.muted = true;
   }
 
   unmute() {
-    this.audio.muted = false;
+    // this.audio.muted = false;
   }
 
   private sendMessage(message: MEDIA_REQUEST_MESSAGE) {
@@ -148,9 +146,16 @@ export default class Media {
     });
 
     peer.on("stream", (stream) => {
-      this.audio.srcObject = stream;
-      this.audio.muted = true;
-      this.audio.play();
+      console.log(`Media: Succeed to connect to stream ${stream.id}.`);
+
+      const audio = document.createElement("audio");
+
+      this.audio.set(stream.id, audio);
+      document.body.appendChild(audio);
+
+      audio.srcObject = stream;
+      audio.muted = true;
+      audio.play();
     });
   }
 
