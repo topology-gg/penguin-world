@@ -5,6 +5,7 @@ import type {
   Connection,
   PeerData,
   PeerMessage,
+  PositionContent,
   State,
   platformerSceneData,
 } from "./types";
@@ -19,6 +20,7 @@ import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
 import { CRDT_CHAT_HISTORY_REMOTE } from "../networking/messages/crdt";
 import { MessageType } from "./enums";
+import { abs } from "lib0/math";
 
 interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
@@ -566,6 +568,10 @@ export default class Platformer extends Phaser.Scene {
     const peers = this.crdt.getPeers();
 
     for (const [clientID, peer] of peers) {
+
+      //
+      // handle peer removal
+      //
       if (peer.get(CRDT_STATE.REMOVED) === true) {
         this.informPeerPresence(
           this.peers.get(clientID)!.getUsername(),
@@ -580,12 +586,18 @@ export default class Platformer extends Phaser.Scene {
         return;
       }
 
+      //
+      // get the peer's current state
+      //
       const state: State | undefined = peer.get(CRDT_STATE.STATE);
 
       if (state === undefined) {
         return;
       }
 
+      //
+      // ?
+      //
       if (this.peers.has(clientID) === false) {
         this.peers.set(clientID, this.initPeer());
 
@@ -622,6 +634,45 @@ export default class Platformer extends Phaser.Scene {
         this.media.controlMediaStreamByID(audio.id, audio.muted);
       }
     }
+
+    //
+    // Check overlap between my penguin and each of other penguins
+    // note:
+    // - the local clientID can be obtained from `this.crdt.getClientID()`
+    // - use `for (const [clientID, peer] of peers) {` to loop through all peers
+    // - use a guesstimate hitbox dimension for now; use square as the hitbox shape
+    //
+    const TOY_HITBOX_DIM = 20;
+    const me = this.playerController;
+    if (me !== undefined) {
+        for (const [clientID, peer] of peers) {
+            // get peer state
+            const state: State | undefined = peer.get(CRDT_STATE.STATE);
+            if (state === undefined) {
+                continue;
+            }
+
+            // get coordinates of interest
+            const myPos = me?.getPosition();
+            const myX = myPos?.x;
+            const myY = myPos?.y;
+            const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
+            const theirX = theirPos.x;
+            const theirY = theirPos.y;
+
+            // check for overlap
+            const distanceX = abs(myX - theirX);
+            const distanceY = abs(myY - theirY);
+            const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
+
+
+            // if overlap, send remedy ops to crdt;
+            // remedy ops include one op to update my state, and the other op to update the state of the peer colliding with me
+            // TODO: update my own position in crdt; move my sprite on screen
+            // TODO: update my colliding peer's position in crdt; move my colliding peer's sprite on screen
+        }
+    }
+
 
     const GAME_TICKS_TILL_POSITION_UPDATE = 1;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {
