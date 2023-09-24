@@ -8,6 +8,7 @@ import type {
   PositionContent,
   State,
   platformerSceneData,
+  positionalMessage,
 } from "./types";
 
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
@@ -18,9 +19,11 @@ import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
-import { CRDT_CHAT_HISTORY_REMOTE } from "../networking/messages/crdt";
+import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "../networking/messages/crdt";
 import { MessageType } from "./enums";
 import { abs } from "lib0/math";
+import * as Y from "yjs";
+import { set } from "lib0";
 
 interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
@@ -64,6 +67,7 @@ export default class Platformer extends Phaser.Scene {
   private crdt: CRDT;
   private media: Media;
   private peers: Map<number, CharacterController> = new Map();
+  private processedMessageIDs: Set<number>;
 
   constructor() {
     super("platformer");
@@ -444,8 +448,43 @@ export default class Platformer extends Phaser.Scene {
       )
     );
 
+    this.processedMessageIDs = new Set();
+
     this.crdt.aware();
     this.crdt.setUsername({ username: this.username });
+    this.crdt.observeGlobalState(
+        (globalState: Y.Map<CRDT_PEER_STATE>) => {
+            const myClientID = this.crdt.getClientID();
+
+            for (const [clientID, crdtPeerState] of globalState) {
+                console.log('observeGlobalState:', clientID, crdtPeerState);
+
+                // Iterate through messsage queue to get unprocessed messages
+                const incomingMessages: positionalMessage[] = crdtPeerState.messages;
+                const unprocessedMessages: positionalMessage[] = incomingMessages.filter(msg => !this.processedMessageIDs.has(msg.messageID));
+                console.log('unprocessedMessages[0]:', JSON.stringify(unprocessedMessages[0]));
+
+                // Apply unprocessed messages to local rendering
+                unprocessedMessages.forEach(msg => {
+                    const msgClientID = msg.clientID;
+                    const msgPosition = msg.position;
+
+                    // if msgClientID is not me, update drawing
+                    this.peers.get(msgClientID)?.moveSprite(msgPosition);
+                    if (msgClientID === myClientID) {
+                        this.playerController?.setPosition(msgPosition.x, msgPosition.y);
+                    }
+
+                    // if msgClientID is me, update crdt awareness state (my state)
+                    // this.crdt.setPosition(this.playerController.getPosition());
+                })
+
+                // Mark those messages as processed locally (add to set)
+                unprocessedMessages.forEach(msg => {this.processedMessageIDs.add(msg.messageID)});
+            }
+        }
+    );
+
     this.crdt.observeChatHistoryRemote(
       (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
         if (this.chatHistoryRemotePointer === undefined) {
@@ -642,10 +681,11 @@ export default class Platformer extends Phaser.Scene {
     // - use `for (const [clientID, peer] of peers) {` to loop through all peers
     // - use a guesstimate hitbox dimension for now; use square as the hitbox shape
     //
-    const TOY_HITBOX_DIM = 20;
     const me = this.playerController;
     if (me !== undefined) {
-        for (const [clientID, peer] of peers) {
+        const TOY_HITBOX_DIM = this.penquin!.displayWidth;
+
+        for (const [peerClientID, peer] of peers) {
             // get peer state
             const state: State | undefined = peer.get(CRDT_STATE.STATE);
             if (state === undefined) {
@@ -653,9 +693,9 @@ export default class Platformer extends Phaser.Scene {
             }
 
             // get coordinates of interest
-            const myPos = me?.getPosition();
-            const myX = myPos?.x;
-            const myY = myPos?.y;
+            const myPos = me.getPosition();
+            const myX = myPos.x;
+            const myY = myPos.y;
             const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
             const theirX = theirPos.x;
             const theirY = theirPos.y;
@@ -665,11 +705,45 @@ export default class Platformer extends Phaser.Scene {
             const distanceY = abs(myY - theirY);
             const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
 
-
             // if overlap, send remedy ops to crdt;
             // remedy ops include one op to update my state, and the other op to update the state of the peer colliding with me
             // TODO: update my own position in crdt; move my sprite on screen
             // TODO: update my colliding peer's position in crdt; move my colliding peer's sprite on screen
+            if (isOverlapped) {
+                console.log('isOverlapped!');
+                // dummy collision resolution:
+                // 1. check whose clientID is larger
+                // 2. set the penguin with larger clientID to bottom left and the other to upper right
+                //    with respect to their geometric center without overlapping
+
+                const meShouldBeLeft = this.crdt.getClientID() > peerClientID;
+                const leftClientID = meShouldBeLeft ? this.crdt.getClientID() : peerClientID;
+                const rightClientID = !meShouldBeLeft? this.crdt.getClientID() : peerClientID;
+                const xCenterAtOverlap = (myX + theirX)/2;
+                const yCenterAtOverlap = (myY + theirY)/2;
+
+                const leftX = xCenterAtOverlap - TOY_HITBOX_DIM*1.5;
+                // const leftY = yCenterAtOverlap - TOY_HITBOX_DIM*1.5;
+                const leftY = meShouldBeLeft ? myY : theirY;
+
+                const rightX = xCenterAtOverlap + TOY_HITBOX_DIM*1.5;
+                // const rightY = yCenterAtOverlap + TOY_HITBOX_DIM*1.5;
+                const rightY = !meShouldBeLeft ? myY : theirY;
+
+                const leftMessage: positionalMessage = {
+                    messageID: Date.now() * leftClientID, // this messageID should be hash of things to guarantee uniqueness
+                    clientID: leftClientID,
+                    position: {x: leftX, y: leftY}
+                };
+                const rightMessage: positionalMessage = {
+                    messageID: Date.now() * rightClientID, // this messageID should be hash of things to guarantee uniqueness
+                    clientID: rightClientID,
+                    position: {x: rightX, y: rightY}
+                };
+                this.crdt.addPositionalMessageToMyGlobalState(leftMessage);
+                this.crdt.addPositionalMessageToMyGlobalState(rightMessage);
+
+            }
         }
     }
 

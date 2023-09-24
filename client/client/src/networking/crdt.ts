@@ -7,8 +7,10 @@ import {
   State,
   TextContent,
   UsernameContent,
+  positionalMessage,
 } from "../scenes/types";
-import { CRDT_CHAT_HISTORY_REMOTE } from "./messages/crdt";
+import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "./messages/crdt";
+import { YMap } from "yjs/dist/src/internals";
 
 export enum CRDT_STATE {
   REMOVED = "REMOVED",
@@ -18,6 +20,7 @@ export enum CRDT_STATE {
 export default class CRDT {
   private doc: Y.Doc;
   private chatHistoryRemote: Y.Array<CRDT_CHAT_HISTORY_REMOTE>;
+  private globalState: Y.Map<CRDT_PEER_STATE>;
   private provider: WebrtcProvider;
 
   private isListening: Map<string, boolean>;
@@ -42,6 +45,8 @@ export default class CRDT {
       text: undefined,
       audio: undefined,
     };
+
+    this.globalState = this.doc.getMap("global-state");
 
     console.log(`CRDT: Client ID is ${this.doc.clientID}.`);
   }
@@ -165,4 +170,45 @@ export default class CRDT {
   getPeers(): Map<number, Map<string, any>> {
     return this.peers;
   }
+
+    //
+    // methods that access & manipulate CRDT global state
+    //
+    observeGlobalState(
+        callback: (globalState: Y.Map<CRDT_PEER_STATE>) => void
+    ) {
+        this.globalState.observe(
+            (event: Y.YMapEvent<CRDT_PEER_STATE>, tx: Y.Transaction) => {
+                // console.log(`globalState observe(): last event: ${JSON.stringify(event)}`);
+                callback(event.target);
+            }
+        );
+    }
+
+    addPositionalMessageToMyGlobalState (message: positionalMessage) {
+        // grab my current message queue from crdt
+        const myClientID = this.doc.clientID;
+        let myCurrState = this.globalState.get(myClientID.toString());
+        if (myCurrState === undefined) {
+            myCurrState = {
+                username: undefined,
+                position: undefined,
+                input: undefined,
+                text: undefined,
+                audio: undefined,
+                messages: []
+            };
+        }
+        const myCurrMessageQueue = myCurrState.messages as positionalMessage[];
+
+        // push new message to queue
+        const newMessageQueue = myCurrMessageQueue.concat([message]);
+
+        // update crdt
+        this.globalState.set(myClientID.toString(), {
+            ...myCurrState,
+            messages: newMessageQueue
+        });
+    }
+
 }

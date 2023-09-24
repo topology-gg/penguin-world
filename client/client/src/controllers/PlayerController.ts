@@ -229,6 +229,10 @@ export default class PlayerController {
     };
   }
 
+  setPosition(x:number, y: number) {
+    this.sprite.setPosition(x, y)
+  }
+
   serializeCursor() {
     return {
       left: {

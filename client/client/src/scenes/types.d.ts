@@ -61,6 +61,17 @@ interface AudioContent {
   muted: boolean;
 }
 
+//
+// New types added to allow messaging over crdt via a queue
+//
+interface positionalMessage {
+    messageID: number; // for each peer to keep track of which messageID of which queue is processed or yet to be processed
+    clientID: number;
+    position: PositionContent;
+}
+//
+// CRDT state interface
+//
 interface State {
   username: UsernameContent | undefined;
   position: PositionContent | undefined;
