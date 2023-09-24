@@ -635,7 +635,7 @@ export default class Platformer extends Phaser.Scene {
       }
 
       //
-      // ?
+      // Spawn and draw peer penguins
       //
       if (this.peers.has(clientID) === false) {
         this.peers.set(clientID, this.initPeer());
