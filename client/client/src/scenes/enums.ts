@@ -4,3 +4,9 @@ export enum MessageType {
     POSITION = "POSITION",
     WHITEBOARD = "WHITEBOARD"
   }
+
+
+export enum ProjectileEvent {
+  SPAWN = "SPAWN",
+  DESPWAN = "DESPWAN",
+}

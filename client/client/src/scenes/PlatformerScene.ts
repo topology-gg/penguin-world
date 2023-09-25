@@ -3,12 +3,16 @@ import ObstaclesController from "../controllers/ObstaclesController";
 import PlayerController from "../controllers/PlayerController";
 import type {
   Connection,
+  CursorKeys,
   PeerData,
   PeerMessage,
+  PeerResolutionMessage,
   PositionContent,
+  ProjectileMessge,
+  ProjectileResolutionMessge,
+  ResolutionMessage,
   State,
   platformerSceneData,
-  resolutionMessage,
 } from "./types";
 
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
@@ -19,8 +23,11 @@ import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
-import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "../networking/messages/crdt";
-import { MessageType } from "./enums";
+import {
+  CRDT_CHAT_HISTORY_REMOTE,
+  CRDT_PEER_STATE,
+} from "../networking/messages/crdt";
+import { MessageType, ProjectileEvent } from "./enums";
 import { abs, sqrt } from "lib0/math";
 import * as Y from "yjs";
 import { set } from "lib0";
@@ -34,10 +41,16 @@ enum PEER_PRESENCE {
   LEFT = "left",
 }
 
+interface Snowball {
+  sprite: Phaser.Physics.Matter.Sprite;
+  id: number;
+}
+
 export default class Platformer extends Phaser.Scene {
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private cursors!: CursorKeys;
 
   private penquin?: Phaser.Physics.Matter.Sprite;
+  private snowballs: Snowball[] = [];
   private playerController?: PlayerController;
   private obstacles!: ObstaclesController;
 
@@ -74,7 +87,10 @@ export default class Platformer extends Phaser.Scene {
   }
 
   init(data: platformerSceneData) {
-    this.cursors = this.input.keyboard.createCursorKeys();
+    this.cursors = {
+      ...this.input.keyboard.createCursorKeys(),
+      f: this.input.keyboard.addKey("f"),
+    };
     this.obstacles = new ObstaclesController();
 
     this.connectedPlayers = data.peers;
@@ -122,6 +138,7 @@ export default class Platformer extends Phaser.Scene {
 
   preload() {
     this.load.atlas("penquin", "assets/penquin.png", "assets/penquin.json");
+    this.load.image("snowball", "assets/Snowball.png");
     this.load.image("tiles", "assets/sheet.png");
     this.load.tilemapTiledJSON("tilemap", "assets/game.json");
 
@@ -420,6 +437,7 @@ export default class Platformer extends Phaser.Scene {
           // https://brm.io/matter-js/docs/classes/Body.html#property_collisionFilter
           this.penquin.setCollisionGroup(-1);
 
+          this.events.addListener;
           this.playerController = new PlayerController(
             this,
             this.penquin,
@@ -427,6 +445,8 @@ export default class Platformer extends Phaser.Scene {
             this.obstacles,
             this.username
           );
+
+          this.events.addListener("throw", this.handleThrowEvent, this);
 
           this.cameras.main.startFollow(this.penquin, true);
           break;
@@ -452,55 +472,102 @@ export default class Platformer extends Phaser.Scene {
 
     this.crdt.aware();
     this.crdt.setUsername({ username: this.username });
-    this.crdt.observeGlobalState(
-        (globalState: Y.Map<CRDT_PEER_STATE>) => {
-            const myClientID = this.crdt.getClientID();
+    this.crdt.observeGlobalState((globalState: Y.Map<CRDT_PEER_STATE>) => {
+      const myClientID = this.crdt.getClientID();
 
-            for (const [clientID, crdtPeerState] of globalState) {
-                console.log('observeGlobalState:', clientID, crdtPeerState);
+      for (const [clientID, crdtPeerState] of globalState) {
+        console.log("observeGlobalState:", clientID, crdtPeerState);
 
-                // Iterate through messsage queue to get unprocessed messages
-                const incomingMessages: resolutionMessage[] = crdtPeerState.messages;
-                const unprocessedMessages: resolutionMessage[] = incomingMessages.filter(msg => !this.processedMessageIDs.has(msg.messageID));
-                console.log('unprocessedMessages:', JSON.stringify(unprocessedMessages));
+        // Iterate through messsage queue to get unprocessed messages
+        const incomingMessages: ResolutionMessage[] = crdtPeerState.messages;
+        const unprocessedMessages: ResolutionMessage[] =
+          incomingMessages.filter(
+            (msg) => !this.processedMessageIDs.has(msg.messageID)
+          );
+        console.log(
+          "unprocessedMessages:",
+          JSON.stringify(unprocessedMessages)
+        );
 
-                // Apply unprocessed messages to local rendering
-                unprocessedMessages.forEach(msg => {
-                    const msgClientID = msg.clientID;
-                    const msgUpdate = msg.update;
-                    const msgIsVelocityBased = msg.isVelocityBased;
+        // Apply unprocessed messages to local rendering
+        unprocessedMessages.forEach((msg) => {
+          if ("update" in msg) {
+            const msgClientID = msg.objectId;
+            const msgUpdate = msg.update;
+            const msgIsVelocityBased = msg.isVelocityBased;
 
-                    if (!msgIsVelocityBased) {
-                        // Position based collision resolution
+            if (!msgIsVelocityBased) {
+              // Position based collision resolution
 
-                        // if msgClientID is not me, update their drawing directly (this is optimistic update!)
-                        this.peers.get(msgClientID)?.moveSprite(msgUpdate);
+              // if msgClientID is not me, update their drawing directly (this is optimistic update!)
+              this.peers.get(msgClientID)?.moveSprite(msgUpdate);
 
-                        // if msgClientID is myself, update playerController's info about my penguin dynamics
-                        if (msgClientID === myClientID) {
-                            this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
-                        }
-                    } else {
-                        // Velocity based collision resolution
+              // if msgClientID is myself, update playerController's info about my penguin dynamics
+              if (msgClientID === myClientID) {
+                this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
+              }
+            } else {
+              // Velocity based collision resolution
 
-                        // if msgClientID is not me, update their drawing directly (this is optimistic update!)
-                        this.peers.get(msgClientID)?.changeSpriteVelocity(msgUpdate);
+              // if msgClientID is not me, update their drawing directly (this is optimistic update!)
+              this.peers.get(msgClientID)?.changeSpriteVelocity(msgUpdate);
 
-                        // if msgClientID is myself, update playerController's info about my penguin dynamics
-                        if (msgClientID === myClientID) {
-                            this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
-                        }
-                    }
-
-                    // if msgClientID is me, update crdt awareness state (my state)
-                    // this.crdt.setPosition(this.playerController.getPosition());
-                })
-
-                // Mark those messages as processed locally (add to set)
-                unprocessedMessages.forEach(msg => {this.processedMessageIDs.add(msg.messageID)});
+              // if msgClientID is myself, update playerController's info about my penguin dynamics
+              if (msgClientID === myClientID) {
+                this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
+              }
             }
-        }
-    );
+          } else {
+            const msgClientID = msg.objectId;
+            const msgUpdate = msg.projectileEvent;
+
+            const msgPosition = msg.position;
+            const msgVelocity = msg.velocity;
+
+            if (msgUpdate === ProjectileEvent.SPAWN) {
+              const existiningSnowball = this.snowballs.find(
+                (snowball) => snowball.id === msgClientID
+              );
+              if (existiningSnowball === undefined) {
+                const posX = msg.position.x;
+                const posY = msg.position.y;
+                const velocityX = msg.velocity.x;
+                const velocityY = msg.velocity.y;
+
+                const snowball = this.matter.add
+                  .sprite(posX, posY, "snowball")
+                  .setFixedRotation()
+                  .setScale(0.1);
+
+                snowball.setIgnoreGravity(true);
+                snowball.setVelocity(velocityX, velocityY);
+
+                const newSnowball: Snowball = {
+                  sprite: snowball,
+                  id: msg.messageID,
+                };
+
+                this.snowballs.push(newSnowball);
+              }
+            } else if (msgUpdate === ProjectileEvent.DESPWAN) {
+              this.snowballs.forEach((snowball) => {
+                if (snowball.id === msg.messageID) {
+                  snowball.sprite.destroy();
+                }
+              });
+            }
+          }
+
+          // if msgClientID is me, update crdt awareness state (my state)
+          // this.crdt.setPosition(this.playerController.getPosition());
+        });
+
+        // Mark those messages as processed locally (add to set)
+        unprocessedMessages.forEach((msg) => {
+          this.processedMessageIDs.add(msg.messageID);
+        });
+      }
+    });
 
     this.crdt.observeChatHistoryRemote(
       (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
@@ -601,6 +668,37 @@ export default class Platformer extends Phaser.Scene {
     });
   }
 
+  handleThrowEvent(positon: Phaser.Math.Vector2, velocityX: number) {
+    console.log("handleThrowEvent", positon, velocityX);
+    const { x, y } = positon;
+
+    const snowball = this.matter.add
+      .sprite(x, y, "snowball")
+      .setFixedRotation()
+      .setScale(0.1);
+
+    snowball.setIgnoreGravity(true);
+    snowball.setVelocity(velocityX, 0);
+
+    const messageId = Date.now() * this.crdt.getClientID();
+    const newSnowball: Snowball = {
+      sprite: snowball,
+      id: messageId,
+    };
+
+    this.snowballs.push(newSnowball);
+
+    const resolveThemMessage: ProjectileResolutionMessge = {
+      messageID: messageId, // this messageID should be hash of things to guarantee uniqueness
+      objectId: messageId,
+      projectileEvent: ProjectileEvent.SPAWN,
+      position: { x, y },
+      velocity: { x: velocityX, y: 0 },
+    };
+
+    this.crdt.addResolutionMessageToMyGlobalState(resolveThemMessage);
+  }
+
   updatePeers(t: number, dt: number) {
     if (this.playerController !== undefined) {
       // Update my penguin.
@@ -624,7 +722,6 @@ export default class Platformer extends Phaser.Scene {
     const peers = this.crdt.getPeers();
 
     for (const [clientID, peer] of peers) {
-
       //
       // handle peer removal
       //
@@ -700,105 +797,137 @@ export default class Platformer extends Phaser.Scene {
     //
     const me = this.playerController;
     if (me !== undefined) {
-        const TOY_HITBOX_DIM = this.penquin!.displayWidth;
+      const TOY_HITBOX_DIM = this.penquin!.displayWidth;
 
-        for (const [peerClientID, peer] of peers) {
-            // get peer state
-            const state: State | undefined = peer.get(CRDT_STATE.STATE);
-            if (state === undefined) {
-                continue;
-            }
-
-            // get coordinates of interest
-            const myPos = me.getPosition();
-            const myX = myPos.x;
-            const myY = myPos.y;
-            const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
-            const theirX = theirPos.x;
-            const theirY = theirPos.y;
-
-            // check for overlap
-            const distanceX = abs(myX - theirX);
-            const distanceY = abs(myY - theirY);
-            const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
-
-            // if overlap, send remedy ops to crdt;
-            // remedy ops include one op to update my state, and the other op to update the state of the peer colliding with me
-            // TODO: update my own position in crdt; move my sprite on screen
-            // TODO: update my colliding peer's position in crdt; move my colliding peer's sprite on screen
-            if (isOverlapped) {
-                console.log('isOverlapped!');
-                // dummy collision resolution:
-                // 1. check whose clientID is larger
-                // 2. set the penguin with larger clientID to bottom left and the other to upper right
-                //    with respect to their geometric center without overlapping
-
-                const normalizationFactor = sqrt((myX - theirX)**2 + (myY - theirY)**2);
-                const normalizationFactorSafe = normalizationFactor == 0 ? 1 : normalizationFactor;
-                const normalizedDisplacementVectorMeMinusPeer = {
-                    x: (myX - theirX)/normalizationFactorSafe,
-                    y: (myY - theirY)/normalizationFactorSafe
-                };
-                const RESOLVE_VEL_COEF = 6;
-                const myNewVel = {
-                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
-                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
-                }
-                const theirNewVel = {
-                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
-                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
-                }
-
-                const resolveMeMessage: resolutionMessage = {
-                    messageID: Date.now() * this.crdt.getClientID(), // this messageID should be hash of things to guarantee uniqueness
-                    clientID: this.crdt.getClientID(),
-                    update: myNewVel,
-                    isVelocityBased: true,
-                }
-                const resolveThemMessage: resolutionMessage = {
-                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
-                    clientID: peerClientID,
-                    update: theirNewVel,
-                    isVelocityBased: true,
-                }
-
-                //
-                // Old code below for silly position-based collision resolution
-                //
-
-                // const meShouldBeLeft = this.crdt.getClientID() > peerClientID;
-                // const leftClientID = meShouldBeLeft ? this.crdt.getClientID() : peerClientID;
-                // const rightClientID = !meShouldBeLeft? this.crdt.getClientID() : peerClientID;
-                // const xCenterAtOverlap = (myX + theirX)/2;
-                // const yCenterAtOverlap = (myY + theirY)/2;
-
-                // const leftX = xCenterAtOverlap - TOY_HITBOX_DIM*1.5;
-                // // const leftY = yCenterAtOverlap - TOY_HITBOX_DIM*1.5;
-                // const leftY = meShouldBeLeft ? myY : theirY;
-
-                // const rightX = xCenterAtOverlap + TOY_HITBOX_DIM*1.5;
-                // // const rightY = yCenterAtOverlap + TOY_HITBOX_DIM*1.5;
-                // const rightY = !meShouldBeLeft ? myY : theirY;
-
-                // const leftMessage: positionalMessage = {
-                //     messageID: Date.now() * leftClientID, // this messageID should be hash of things to guarantee uniqueness
-                //     clientID: leftClientID,
-                //     position: {x: leftX, y: leftY}
-                // };
-                // const rightMessage: positionalMessage = {
-                //     messageID: Date.now() * rightClientID, // this messageID should be hash of things to guarantee uniqueness
-                //     clientID: rightClientID,
-                //     position: {x: rightX, y: rightY}
-                // };
-
-
-                this.crdt.addResolutionMessageToMyGlobalState(resolveMeMessage);
-                this.crdt.addResolutionMessageToMyGlobalState(resolveThemMessage);
-
-            }
+      for (const [peerClientID, peer] of peers) {
+        // get peer state
+        const state: State | undefined = peer.get(CRDT_STATE.STATE);
+        if (state === undefined) {
+          continue;
         }
-    }
 
+        // get coordinates of interest
+        const myPos = me.getPosition();
+        const myX = myPos.x;
+        const myY = myPos.y;
+        const theirPos = (
+          state ? state.position : { x: 0, y: 0 }
+        ) as PositionContent;
+        const theirX = theirPos.x;
+        const theirY = theirPos.y;
+
+        // check for overlap
+        const distanceX = abs(myX - theirX);
+        const distanceY = abs(myY - theirY);
+        const isOverlapped =
+          distanceX <= TOY_HITBOX_DIM && distanceY <= TOY_HITBOX_DIM;
+
+        // if overlap, send remedy ops to crdt;
+        // remedy ops include one op to update my state, and the other op to update the state of the peer colliding with me
+        // TODO: update my own position in crdt; move my sprite on screen
+        // TODO: update my colliding peer's position in crdt; move my colliding peer's sprite on screen
+        if (isOverlapped) {
+          console.log("isOverlapped!");
+          // dummy collision resolution:
+          // 1. check whose clientID is larger
+          // 2. set the penguin with larger clientID to bottom left and the other to upper right
+          //    with respect to their geometric center without overlapping
+
+          const normalizationFactor = sqrt(
+            (myX - theirX) ** 2 + (myY - theirY) ** 2
+          );
+          const normalizationFactorSafe =
+            normalizationFactor == 0 ? 1 : normalizationFactor;
+          const normalizedDisplacementVectorMeMinusPeer = {
+            x: (myX - theirX) / normalizationFactorSafe,
+            y: (myY - theirY) / normalizationFactorSafe,
+          };
+          const RESOLVE_VEL_COEF = 6;
+          const myNewVel = {
+            x:
+              normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
+            y:
+              normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
+          };
+          const theirNewVel = {
+            x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
+            y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
+          };
+
+          const resolveMeMessage: PeerResolutionMessage = {
+            messageID: Date.now() * this.crdt.getClientID(), // this messageID should be hash of things to guarantee uniqueness
+            objectId: this.crdt.getClientID(),
+            update: myNewVel,
+            isVelocityBased: true,
+          };
+          const resolveThemMessage: PeerResolutionMessage = {
+            messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
+            objectId: peerClientID,
+            update: theirNewVel,
+            isVelocityBased: true,
+          };
+
+          //
+          // Old code below for silly position-based collision resolution
+          //
+
+          // const meShouldBeLeft = this.crdt.getClientID() > peerClientID;
+          // const leftClientID = meShouldBeLeft ? this.crdt.getClientID() : peerClientID;
+          // const rightClientID = !meShouldBeLeft? this.crdt.getClientID() : peerClientID;
+          // const xCenterAtOverlap = (myX + theirX)/2;
+          // const yCenterAtOverlap = (myY + theirY)/2;
+
+          // const leftX = xCenterAtOverlap - TOY_HITBOX_DIM*1.5;
+          // // const leftY = yCenterAtOverlap - TOY_HITBOX_DIM*1.5;
+          // const leftY = meShouldBeLeft ? myY : theirY;
+
+          // const rightX = xCenterAtOverlap + TOY_HITBOX_DIM*1.5;
+          // // const rightY = yCenterAtOverlap + TOY_HITBOX_DIM*1.5;
+          // const rightY = !meShouldBeLeft ? myY : theirY;
+
+          // const leftMessage: positionalMessage = {
+          //     messageID: Date.now() * leftClientID, // this messageID should be hash of things to guarantee uniqueness
+          //     clientID: leftClientID,
+          //     position: {x: leftX, y: leftY}
+          // };
+          // const rightMessage: positionalMessage = {
+          //     messageID: Date.now() * rightClientID, // this messageID should be hash of things to guarantee uniqueness
+          //     clientID: rightClientID,
+          //     position: {x: rightX, y: rightY}
+          // };
+
+          this.crdt.addResolutionMessageToMyGlobalState(resolveMeMessage);
+          this.crdt.addResolutionMessageToMyGlobalState(resolveThemMessage);
+        }
+      }
+
+      for (const snowball of this.snowballs) {
+        // get coordinates of interest
+        const myPos = me.getPosition();
+        const myX = myPos.x;
+        const myY = myPos.y;
+        const snowballX = snowball.sprite.x;
+        const snowballY = snowball.sprite.y;
+
+        const distanceX = abs(myX - snowballX);
+        const distanceY = abs(myY - snowballY);
+        const isOverlapped =
+          distanceX <= TOY_HITBOX_DIM && distanceY <= TOY_HITBOX_DIM;
+        const snowballId = snowball.id;
+
+        if (isOverlapped) {
+          const resolveThemMessage: ProjectileResolutionMessge = {
+            messageID: Date.now() * snowballId, // this messageID should be hash of things to guarantee uniqueness
+            objectId: snowball.id,
+            projectileEvent: ProjectileEvent.DESPWAN,
+            position: { x: 0, y: 0 },
+            velocity: { x: 0, y: 0 },
+          };
+
+          this.crdt.addResolutionMessageToMyGlobalState(resolveThemMessage);
+        }
+      }
+    }
 
     const GAME_TICKS_TILL_POSITION_UPDATE = 1;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {

@@ -7,8 +7,8 @@ import {
   USERNAME_Y_OFFSET,
 } from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
+import { CursorKeys } from "../scenes/types";
 
-type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
 
 export default class PlayerController {
   private scene: Phaser.Scene;
@@ -28,6 +28,7 @@ export default class PlayerController {
     cursors: CursorKeys,
     obstacles: ObstaclesController,
     username: string
+    
   ) {
     this.scene = scene;
     this.sprite = sprite;
@@ -35,7 +36,6 @@ export default class PlayerController {
     this.obstacles = obstacles;
 
     this.createAnimations();
-
     this.stateMachine = new StateMachine(this, "player");
 
     this.speechText = scene.add.text(
@@ -75,6 +75,10 @@ export default class PlayerController {
       .addState("jump", {
         onEnter: this.jumpOnEnter,
         onUpdate: this.jumpOnUpdate,
+      })
+      .addState("throw", {
+        onEnter: this.throwEnter,   
+        onUpdate: this.throwOnUpdate,     
       })
       .setState("idle");
 
@@ -140,6 +144,11 @@ export default class PlayerController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
+
+    const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
+    if(fJustPressed){
+      this.stateMachine.setState("throw");
+    }
   }
 
   private walkOnEnter() {
@@ -164,6 +173,16 @@ export default class PlayerController {
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
+
+    const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
+    if(fJustPressed){
+      this.stateMachine.setState("throw");
+    }
+  }
+
+  private throwOnUpdate(){
+    console.log("fire update")
+    this.stateMachine.setState("idle");
   }
 
   private walkOnExit() {
@@ -172,6 +191,17 @@ export default class PlayerController {
 
   private jumpOnEnter() {
     this.sprite.setVelocityY(-12);
+  }
+
+  private throwEnter(){
+    const facingLeft = this.sprite.flipX 
+
+    const positionAdjust = facingLeft ? -20 : 20
+    const position = new Phaser.Math.Vector2(this.sprite.x + positionAdjust, this.sprite.y)
+    const velocityX = facingLeft ? -10 : 10
+
+    this.scene.events.emit("throw", position, velocityX)
+
   }
 
   private jumpOnUpdate() {
@@ -183,6 +213,11 @@ export default class PlayerController {
     } else if (this.cursors.right.isDown) {
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
+    }
+
+    const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
+    if(fJustPressed){
+      this.stateMachine.setState("throw");
     }
   }
 
@@ -250,6 +285,7 @@ export default class PlayerController {
         isDown: this.cursors.right.isDown,
       },
       space: this.cursors.space.isDown,
+      f : this.cursors.f.isDown,
     };
   }
 }
