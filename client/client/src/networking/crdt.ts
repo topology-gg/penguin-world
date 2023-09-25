@@ -7,7 +7,7 @@ import {
   State,
   TextContent,
   UsernameContent,
-  positionalMessage,
+  resolutionMessage,
 } from "../scenes/types";
 import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "./messages/crdt";
 import { YMap } from "yjs/dist/src/internals";
@@ -185,7 +185,7 @@ export default class CRDT {
         );
     }
 
-    addPositionalMessageToMyGlobalState (message: positionalMessage) {
+    addResolutionMessageToMyGlobalState (message: resolutionMessage) {
         // grab my current message queue from crdt
         const myClientID = this.doc.clientID;
         let myCurrState = this.globalState.get(myClientID.toString());
@@ -199,7 +199,7 @@ export default class CRDT {
                 messages: []
             };
         }
-        const myCurrMessageQueue = myCurrState.messages as positionalMessage[];
+        const myCurrMessageQueue = myCurrState.messages as resolutionMessage[];
 
         // push new message to queue
         const newMessageQueue = myCurrMessageQueue.concat([message]);

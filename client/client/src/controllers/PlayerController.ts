@@ -233,6 +233,14 @@ export default class PlayerController {
     this.sprite.setPosition(x, y)
   }
 
+//   getVelocity() {
+//     return this.sprite.
+//   }
+
+  setVelocity(vx: number, vy: number) {
+    this.sprite.setVelocity(vx, vy);
+  }
+
   serializeCursor() {
     return {
       left: {

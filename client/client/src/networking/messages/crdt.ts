@@ -1,4 +1,4 @@
-import { AudioContent, InputContent, PositionContent, TextContent, UsernameContent, positionalMessage } from "../../scenes/types";
+import { AudioContent, InputContent, PositionContent, TextContent, UsernameContent, resolutionMessage } from "../../scenes/types";
 
 export interface CRDT_CHAT_HISTORY_REMOTE {
   id: number;
@@ -13,5 +13,5 @@ export interface CRDT_PEER_STATE {
     input: InputContent | undefined;
     text: TextContent | undefined;
     audio: AudioContent | undefined;
-    messages: positionalMessage[] | undefined;
+    messages: resolutionMessage[] | undefined;
 }

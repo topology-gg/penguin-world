@@ -5,6 +5,7 @@ import {
   SimulatedCursor,
   TextContent,
   UsernameContent,
+  Vec2,
 } from "../scenes/types";
 import StateMachine from "../utils/StateMachine";
 import {
@@ -161,6 +162,11 @@ export default class CharacterController {
     this.sprite.y = position.y;
 
     this.updateLabels();
+  }
+
+  changeSpriteVelocity(velocity: Vec2){
+    this.sprite.setVelocityX(velocity.x);
+    this.sprite.setVelocityY(velocity.y);
   }
 
   private idleOnEnter() {
