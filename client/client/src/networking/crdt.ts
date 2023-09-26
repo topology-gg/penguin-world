@@ -214,6 +214,17 @@ export default class CRDT {
 
     clearMyMessageQueue () {
         const myClientID = this.doc.clientID;
+
+        // check if my queue is already empty; if so, skip crdt update
+        const currQueue = this.globalState.get(myClientID.toString())?.messages;
+        if (currQueue === undefined) {
+            return;
+        }
+        if (currQueue.length == 0) {
+            return;
+        }
+
+        // otherwise clear the queue in crdt
         const emptyState = {
             username: undefined,
             position: undefined,
