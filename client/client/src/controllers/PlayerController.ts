@@ -229,6 +229,14 @@ export default class PlayerController {
     };
   }
 
+  setPosition(x: number, y: number) {
+    this.sprite.setPosition(x, y);
+  }
+
+  applyForce(force: Phaser.Math.Vector2) {
+    this.sprite.applyForce(force);
+  }
+
   serializeCursor() {
     return {
       left: {

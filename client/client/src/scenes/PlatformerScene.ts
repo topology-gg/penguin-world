@@ -5,8 +5,11 @@ import type {
   Connection,
   PeerData,
   PeerMessage,
+  PositionContent,
   State,
   platformerSceneData,
+  resolutionMessage,
+  resolutionMessageLite,
 } from "./types";
 
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
@@ -17,8 +20,10 @@ import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
-import { CRDT_CHAT_HISTORY_REMOTE } from "../networking/messages/crdt";
+import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "../networking/messages/crdt";
 import { MessageType } from "./enums";
+import { abs, sqrt } from "lib0/math";
+import * as Y from "yjs";
 
 interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
@@ -442,8 +447,47 @@ export default class Platformer extends Phaser.Scene {
       )
     );
 
+    this.processedMessageIDs = new Set();
+
     this.crdt.aware();
     this.crdt.setUsername({ username: this.username });
+    this.crdt.observeGlobalState(
+        (globalState: Y.Map<CRDT_PEER_STATE>) => {
+            const myClientID = this.crdt.getClientID();
+
+            //
+            // Grab my message queue
+            //
+            const messages = globalState.get(myClientID.toString())?.messages;
+            if (messages === undefined) {
+                return;
+            }
+
+            //
+            // Process all of them sequentially
+            //
+            messages.forEach((msg: resolutionMessageLite) => {
+                const msgUpdate = msg.update;
+                const msgIsVelocityBased = msg.isVelocityBased;
+
+                if (!msgIsVelocityBased) {
+                    // Position based collision resolution
+                    this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
+                } else {
+                    // Velocity based collision resolution
+                    const force : Phaser.Math.Vector2 = new Phaser.Math.Vector2(msgUpdate.x / 100, msgUpdate.y /100);
+                    this.playerController?.applyForce(force);
+                }
+            })
+
+            //
+            // Clear my message queue
+            //
+            this.crdt.clearMyMessageQueue();
+
+        }
+    );
+
     this.crdt.observeChatHistoryRemote(
       (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
         if (this.chatHistoryRemotePointer === undefined) {
@@ -566,6 +610,10 @@ export default class Platformer extends Phaser.Scene {
     const peers = this.crdt.getPeers();
 
     for (const [clientID, peer] of peers) {
+
+      //
+      // handle peer removal
+      //
       if (peer.get(CRDT_STATE.REMOVED) === true) {
         this.informPeerPresence(
           this.peers.get(clientID)!.getUsername(),
@@ -580,12 +628,18 @@ export default class Platformer extends Phaser.Scene {
         return;
       }
 
+      //
+      // get the peer's current state
+      //
       const state: State | undefined = peer.get(CRDT_STATE.STATE);
 
       if (state === undefined) {
         return;
       }
 
+      //
+      // Spawn and draw peer penguins
+      //
       if (this.peers.has(clientID) === false) {
         this.peers.set(clientID, this.initPeer());
 
@@ -622,6 +676,92 @@ export default class Platformer extends Phaser.Scene {
         this.media.controlMediaStreamByID(audio.id, audio.muted);
       }
     }
+
+    //
+    // Check overlap between my penguin and each of other penguins
+    // note:
+    // - the local clientID can be obtained from `this.crdt.getClientID()`
+    // - use `for (const [clientID, peer] of peers) {` to loop through all peers
+    // - use a guesstimate hitbox dimension for now; use square as the hitbox shape
+    //
+    const me = this.playerController;
+    if (me !== undefined) {
+        const TOY_HITBOX_DIM = this.penquin!.displayWidth;
+
+        for (const [peerClientID, peer] of peers) {
+            // get peer state
+            const state: State | undefined = peer.get(CRDT_STATE.STATE);
+            if (state === undefined) {
+                continue;
+            }
+
+            // get coordinates of interest
+            const myPos = me.getPosition();
+            const myX = myPos.x;
+            const myY = myPos.y;
+            const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
+            const theirX = theirPos.x;
+            const theirY = theirPos.y;
+
+            // check for overlap
+            const distanceX = abs(myX - theirX);
+            const distanceY = abs(myY - theirY);
+            const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
+
+            // if overlap, send resolution message via crdt (use crdt as mailbox)
+            if (isOverlapped) {
+                console.log('isOverlapped!');
+
+                //
+                // calculate the magnitude of the displacement vector from them to me
+                //
+                const normalizationFactor = sqrt((myX - theirX)**2 + (myY - theirY)**2);
+                const normalizationFactorSafe = normalizationFactor == 0 ? 1 : normalizationFactor;
+
+                //
+                // calculate the normalised displacement vector from them to me
+                //
+                const normalizedDisplacementVectorMeMinusPeer = {
+                    x: (myX - theirX)/normalizationFactorSafe,
+                    y: (myY - theirY)/normalizationFactorSafe
+                };
+
+                //
+                // this coef resembles restitution coefficient
+                //
+                const RESOLVE_VEL_COEF = 6;
+
+                //
+                // calculate new velocities for myself and them for resolving the collision
+                //
+                const myNewVel = {
+                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
+                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
+                }
+                const theirNewVel = {
+                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
+                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
+                }
+
+                //
+                // don't send message to myself; act upon it immediately
+                //
+                const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
+                this.playerController?.applyForce(myForce);
+
+                //
+                // put the peer resolution message in their mailbox
+                //
+                const resolveThemMessage: resolutionMessageLite = {
+                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness; NOTE: BYZANTINE FAULT VULNERABLE!
+                    update: theirNewVel,
+                    isVelocityBased: true,
+                }
+                this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolveThemMessage);
+            }
+        }
+    }
+
 
     const GAME_TICKS_TILL_POSITION_UPDATE = 1;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {
