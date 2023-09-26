@@ -518,7 +518,8 @@ export default class Platformer extends Phaser.Scene {
               }
             }
           } else {
-            const msgClientID = msg.objectId;
+            
+            const msgObjectId = msg.objectId;
             const msgUpdate = msg.projectileEvent;
 
             const msgPosition = msg.position;
@@ -526,7 +527,7 @@ export default class Platformer extends Phaser.Scene {
 
             if (msgUpdate === ProjectileEvent.SPAWN) {
               const existiningSnowball = this.snowballs.find(
-                (snowball) => snowball.id === msgClientID
+                (snowball) => snowball.id === msgObjectId
               );
               if (existiningSnowball === undefined) {
                 const posX = msg.position.x;
@@ -534,13 +535,7 @@ export default class Platformer extends Phaser.Scene {
                 const velocityX = msg.velocity.x;
                 const velocityY = msg.velocity.y;
 
-                const snowball = this.matter.add
-                  .sprite(posX, posY, "snowball")
-                  .setFixedRotation()
-                  .setScale(0.1);
-
-                snowball.setIgnoreGravity(true);
-                snowball.setVelocity(velocityX, velocityY);
+                const snowball = this.createSnowball(posX, posY, velocityX, velocityY, msgObjectId)
 
                 const newSnowball: Snowball = {
                   sprite: snowball,
@@ -668,19 +663,33 @@ export default class Platformer extends Phaser.Scene {
     });
   }
 
-  handleThrowEvent(positon: Phaser.Math.Vector2, velocityX: number) {
-    console.log("handleThrowEvent", positon, velocityX);
-    const { x, y } = positon;
+  createSnowball(x: number, y: number, velocityX: number, velocityY: number, messageId : number) {
+
+    const snowballCollisionGroup = -12
 
     const snowball = this.matter.add
-      .sprite(x, y, "snowball")
+      .sprite(x, y, "snowball")    
       .setFixedRotation()
-      .setScale(0.1);
+      .setScale(0.05);
 
+    snowball.setCollisionGroup(snowballCollisionGroup)
     snowball.setIgnoreGravity(true);
-    snowball.setVelocity(velocityX, 0);
+    snowball.setVelocity(velocityX, velocityY);
+    snowball.setFriction(0, 0);
 
+    setTimeout(() => {
+      snowball.destroy();
+      this.snowballs = this.snowballs.filter((s) => s.id !== messageId);
+    }, 1000);
+
+    return snowball;
+  }
+  handleThrowEvent(positon: Phaser.Math.Vector2, velocityX: number) {
+    const { x, y } = positon;
+
+    
     const messageId = Date.now() * this.crdt.getClientID();
+    const snowball = this.createSnowball(x, y, velocityX, 0, messageId)
     const newSnowball: Snowball = {
       sprite: snowball,
       id: messageId,

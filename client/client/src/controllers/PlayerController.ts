@@ -9,7 +9,6 @@ import {
 import ObstaclesController from "./ObstaclesController";
 import { CursorKeys } from "../scenes/types";
 
-
 export default class PlayerController {
   private scene: Phaser.Scene;
   private sprite: Phaser.Physics.Matter.Sprite;
@@ -28,7 +27,6 @@ export default class PlayerController {
     cursors: CursorKeys,
     obstacles: ObstaclesController,
     username: string
-    
   ) {
     this.scene = scene;
     this.sprite = sprite;
@@ -76,10 +74,6 @@ export default class PlayerController {
         onEnter: this.jumpOnEnter,
         onUpdate: this.jumpOnUpdate,
       })
-      .addState("throw", {
-        onEnter: this.throwEnter,   
-        onUpdate: this.throwOnUpdate,     
-      })
       .setState("idle");
 
     this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
@@ -92,12 +86,28 @@ export default class PlayerController {
       }
 
       if (gameObject instanceof Phaser.Physics.Matter.TileBody) {
-        if (this.stateMachine.isCurrentState("jump")) {
+        // show coordinates of both objects
+        
+        const characterBottom = Math.floor(this.sprite.body.position.y - this.sprite.height / 2);
+
+        const characterLeft = this.sprite.body.position.x - this.sprite.width / 2;
+        const characterRight = this.sprite.body.position.x + this.sprite.width / 2;        
+
+        const tileTop = body.position.y - gameObject.tile.height / 2;
+        const tileLeft = body.position.x - gameObject.tile.width / 2;
+        const tileRight = body.position.x + gameObject.tile.width / 2;
+
+        const characterAboveTile = characterBottom <= tileTop && this.sprite.body.velocity.y >= 0
+        const characterLeftOfTile = characterRight - 10 <= tileLeft
+        const characterRightOfTile = characterLeft + 10 >= tileRight
+
+        if (this.stateMachine.isCurrentState("jump") && (characterAboveTile || characterLeftOfTile || characterRightOfTile)) {
           this.stateMachine.setState("idle");
         }
         return;
       }
     });
+
   }
 
   chat(input: string) {
@@ -146,8 +156,8 @@ export default class PlayerController {
     }
 
     const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
-    if(fJustPressed){
-      this.stateMachine.setState("throw");
+    if (fJustPressed) {
+      this.throwSnowball();
     }
   }
 
@@ -170,20 +180,18 @@ export default class PlayerController {
     }
 
     const spaceJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.space);
+    
     if (spaceJustPressed) {
       this.stateMachine.setState("jump");
     }
 
     const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
-    if(fJustPressed){
-      this.stateMachine.setState("throw");
+    if (fJustPressed) {
+      this.throwSnowball();
     }
   }
 
-  private throwOnUpdate(){
-    console.log("fire update")
-    this.stateMachine.setState("idle");
-  }
+
 
   private walkOnExit() {
     this.sprite.stop();
@@ -193,15 +201,19 @@ export default class PlayerController {
     this.sprite.setVelocityY(-12);
   }
 
-  private throwEnter(){
-    const facingLeft = this.sprite.flipX 
+  private throwSnowball() {
+    const facingLeft = this.sprite.flipX;
 
-    const positionAdjust = facingLeft ? -20 : 20
-    const position = new Phaser.Math.Vector2(this.sprite.x + positionAdjust, this.sprite.y)
-    const velocityX = facingLeft ? -10 : 10
+    const positionAdjust = facingLeft
+      ? -10 - this.sprite.width / 2
+      : 10 + this.sprite.width / 2;
+    const position = new Phaser.Math.Vector2(
+      this.sprite.x + positionAdjust,
+      this.sprite.y
+    );
+    const velocityX = facingLeft ? -20 : 20;
 
-    this.scene.events.emit("throw", position, velocityX)
-
+    this.scene.events.emit("throw", position, velocityX);
   }
 
   private jumpOnUpdate() {
@@ -216,8 +228,8 @@ export default class PlayerController {
     }
 
     const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
-    if(fJustPressed){
-      this.stateMachine.setState("throw");
+    if (fJustPressed) {
+      this.throwSnowball();
     }
   }
 
@@ -264,13 +276,13 @@ export default class PlayerController {
     };
   }
 
-  setPosition(x:number, y: number) {
-    this.sprite.setPosition(x, y)
+  setPosition(x: number, y: number) {
+    this.sprite.setPosition(x, y);
   }
 
-//   getVelocity() {
-//     return this.sprite.
-//   }
+  //   getVelocity() {
+  //     return this.sprite.
+  //   }
 
   setVelocity(vx: number, vy: number) {
     this.sprite.setVelocity(vx, vy);
@@ -285,7 +297,7 @@ export default class PlayerController {
         isDown: this.cursors.right.isDown,
       },
       space: this.cursors.space.isDown,
-      f : this.cursors.f.isDown,
+      f: this.cursors.f.isDown,
     };
   }
 }
