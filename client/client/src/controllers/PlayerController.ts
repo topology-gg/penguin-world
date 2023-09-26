@@ -229,16 +229,12 @@ export default class PlayerController {
     };
   }
 
-  setPosition(x:number, y: number) {
-    this.sprite.setPosition(x, y)
+  setPosition(x: number, y: number) {
+    this.sprite.setPosition(x, y);
   }
 
-//   getVelocity() {
-//     return this.sprite.
-//   }
-
-  setVelocity(vx: number, vy: number) {
-    this.sprite.setVelocity(vx, vy);
+  applyForce(force: Phaser.Math.Vector2) {
+    this.sprite.applyForce(force);
   }
 
   serializeCursor() {
