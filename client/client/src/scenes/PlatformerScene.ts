@@ -24,7 +24,6 @@ import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "../networking/message
 import { MessageType } from "./enums";
 import { abs, sqrt } from "lib0/math";
 import * as Y from "yjs";
-import { set } from "lib0";
 
 interface ConnectedPlayer extends Connection {
   controller?: CharacterController;
@@ -68,7 +67,6 @@ export default class Platformer extends Phaser.Scene {
   private crdt: CRDT;
   private media: Media;
   private peers: Map<number, CharacterController> = new Map();
-  private processedMessageIDs: Set<number>;
 
   constructor() {
     super("platformer");
@@ -468,7 +466,7 @@ export default class Platformer extends Phaser.Scene {
             //
             // Process all of them sequentially
             //
-            messages.forEach(msg => {
+            messages.forEach((msg: resolutionMessageLite) => {
                 const msgUpdate = msg.update;
                 const msgIsVelocityBased = msg.isVelocityBased;
 
@@ -487,50 +485,6 @@ export default class Platformer extends Phaser.Scene {
             //
             this.crdt.clearMyMessageQueue();
 
-
-            // for (const [clientID, crdtPeerState] of globalState) {
-            //     console.log('observeGlobalState:', clientID, crdtPeerState);
-
-            //     // Iterate through messsage queue to get unprocessed messages
-            //     const incomingMessages: resolutionMessage[] = crdtPeerState.messages;
-            //     const unprocessedMessages: resolutionMessage[] = incomingMessages.filter(msg => !this.processedMessageIDs.has(msg.messageID));
-            //     console.log('unprocessedMessages:', JSON.stringify(unprocessedMessages));
-
-            //     // Apply unprocessed messages to local rendering
-            //     unprocessedMessages.forEach(msg => {
-            //         const msgClientID = msg.clientID;
-            //         const msgUpdate = msg.update;
-            //         const msgIsVelocityBased = msg.isVelocityBased;
-
-            //         if (!msgIsVelocityBased) {
-            //             // Position based collision resolution
-
-            //             // if msgClientID is not me, update their drawing directly (this is optimistic update!)
-            //             this.peers.get(msgClientID)?.moveSprite(msgUpdate);
-
-            //             // // if msgClientID is myself, update playerController's info about my penguin dynamics
-            //             // if (msgClientID === myClientID) {
-            //             //     this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
-            //             // }
-            //         } else {
-            //             // Velocity based collision resolution
-
-            //             // if msgClientID is not me, update their drawing directly (this is optimistic update!)
-            //             this.peers.get(msgClientID)?.changeSpriteVelocity(msgUpdate);
-
-            //             // // if msgClientID is myself, update playerController's info about my penguin dynamics
-            //             // if (msgClientID === myClientID) {
-            //             //     this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
-            //             // }
-            //         }
-
-            //         // if msgClientID is me, update crdt awareness state (my state)
-            //         // this.crdt.setPosition(this.playerController.getPosition());
-            //     })
-
-            //     // Mark those messages as processed locally (add to set)
-            //     unprocessedMessages.forEach(msg => {this.processedMessageIDs.add(msg.messageID)});
-            // }
         }
     );
 
@@ -754,24 +708,32 @@ export default class Platformer extends Phaser.Scene {
             const distanceY = abs(myY - theirY);
             const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
 
-            // if overlap, send remedy ops to crdt;
-            // remedy ops include one op to update my state, and the other op to update the state of the peer colliding with me
-            // TODO: update my own position in crdt; move my sprite on screen
-            // TODO: update my colliding peer's position in crdt; move my colliding peer's sprite on screen
+            // if overlap, send resolution message via crdt (use crdt as mailbox)
             if (isOverlapped) {
                 console.log('isOverlapped!');
-                // dummy collision resolution:
-                // 1. check whose clientID is larger
-                // 2. set the penguin with larger clientID to bottom left and the other to upper right
-                //    with respect to their geometric center without overlapping
 
+                //
+                // calculate the magnitude of the displacement vector from them to me
+                //
                 const normalizationFactor = sqrt((myX - theirX)**2 + (myY - theirY)**2);
                 const normalizationFactorSafe = normalizationFactor == 0 ? 1 : normalizationFactor;
+
+                //
+                // calculate the normalised displacement vector from them to me
+                //
                 const normalizedDisplacementVectorMeMinusPeer = {
                     x: (myX - theirX)/normalizationFactorSafe,
                     y: (myY - theirY)/normalizationFactorSafe
                 };
+
+                //
+                // this coef resembles restitution coefficient
+                //
                 const RESOLVE_VEL_COEF = 6;
+
+                //
+                // calculate new velocities for myself and them for resolving the collision
+                //
                 const myNewVel = {
                     x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
                     y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
@@ -780,51 +742,6 @@ export default class Platformer extends Phaser.Scene {
                     x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
                     y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
                 }
-
-                // const resolveMeMessage: resolutionMessage = {
-                //     messageID: Date.now() * this.crdt.getClientID(), // this messageID should be hash of things to guarantee uniqueness
-                //     clientID: this.crdt.getClientID(),
-                //     update: myNewVel,
-                //     isVelocityBased: true,
-                // }
-                // const resolveThemMessage: resolutionMessage = {
-                //     messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
-                //     clientID: peerClientID,
-                //     update: theirNewVel,
-                //     isVelocityBased: true,
-                // }
-
-                //
-                // Old code below for silly position-based collision resolution
-                //
-
-                // const meShouldBeLeft = this.crdt.getClientID() > peerClientID;
-                // const leftClientID = meShouldBeLeft ? this.crdt.getClientID() : peerClientID;
-                // const rightClientID = !meShouldBeLeft? this.crdt.getClientID() : peerClientID;
-                // const xCenterAtOverlap = (myX + theirX)/2;
-                // const yCenterAtOverlap = (myY + theirY)/2;
-
-                // const leftX = xCenterAtOverlap - TOY_HITBOX_DIM*1.5;
-                // // const leftY = yCenterAtOverlap - TOY_HITBOX_DIM*1.5;
-                // const leftY = meShouldBeLeft ? myY : theirY;
-
-                // const rightX = xCenterAtOverlap + TOY_HITBOX_DIM*1.5;
-                // // const rightY = yCenterAtOverlap + TOY_HITBOX_DIM*1.5;
-                // const rightY = !meShouldBeLeft ? myY : theirY;
-
-                // const leftMessage: positionalMessage = {
-                //     messageID: Date.now() * leftClientID, // this messageID should be hash of things to guarantee uniqueness
-                //     clientID: leftClientID,
-                //     position: {x: leftX, y: leftY}
-                // };
-                // const rightMessage: positionalMessage = {
-                //     messageID: Date.now() * rightClientID, // this messageID should be hash of things to guarantee uniqueness
-                //     clientID: rightClientID,
-                //     position: {x: rightX, y: rightY}
-                // };
-
-
-                // this.crdt.addResolutionMessageToMyGlobalState(resolveMeMessage);
 
                 //
                 // don't send message to myself; act upon it immediately
@@ -836,7 +753,7 @@ export default class Platformer extends Phaser.Scene {
                 // put the peer resolution message in their mailbox
                 //
                 const resolveThemMessage: resolutionMessageLite = {
-                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
+                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness; NOTE: BYZANTINE FAULT VULNERABLE!
                     update: theirNewVel,
                     isVelocityBased: true,
                 }
