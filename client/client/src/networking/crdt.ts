@@ -8,6 +8,7 @@ import {
   TextContent,
   UsernameContent,
   resolutionMessage,
+  resolutionMessageLite,
 } from "../scenes/types";
 import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "./messages/crdt";
 import { YMap } from "yjs/dist/src/internals";
@@ -207,6 +208,55 @@ export default class CRDT {
         // update crdt
         this.globalState.set(myClientID.toString(), {
             ...myCurrState,
+            messages: newMessageQueue
+        });
+    }
+
+    clearMyMessageQueue () {
+        const myClientID = this.doc.clientID;
+
+        // check if my queue is already empty; if so, skip crdt update
+        const currQueue = this.globalState.get(myClientID.toString())?.messages;
+        if (currQueue === undefined) {
+            return;
+        }
+        if (currQueue.length == 0) {
+            return;
+        }
+
+        // otherwise clear the queue in crdt
+        const emptyState = {
+            username: undefined,
+            position: undefined,
+            input: undefined,
+            text: undefined,
+            audio: undefined,
+            messages: []
+        };
+        this.globalState.set(myClientID.toString(), emptyState);
+    }
+
+    addResolutionMessageToPeerMessageQueue (clientID: number, message: resolutionMessageLite) {
+        // grab the target message queue from crdt
+        let currState = this.globalState.get(clientID.toString());
+        if (currState === undefined) {
+            currState = {
+                username: undefined,
+                position: undefined,
+                input: undefined,
+                text: undefined,
+                audio: undefined,
+                messages: []
+            };
+        }
+        const currMessageQueue = currState.messages as resolutionMessageLite[];
+
+        // push new message to queue
+        const newMessageQueue = currMessageQueue.concat([message]);
+
+        // update crdt
+        this.globalState.set(clientID.toString(), {
+            ...currState,
             messages: newMessageQueue
         });
     }

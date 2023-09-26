@@ -287,6 +287,9 @@ export default class PlayerController {
   setVelocity(vx: number, vy: number) {
     this.sprite.setVelocity(vx, vy);
   }
+  applyForce(force: Phaser.Math.Vector2) {
+    this.sprite.applyForce(force);
+  }
 
   serializeCursor() {
     return {
