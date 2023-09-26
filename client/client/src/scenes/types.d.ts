@@ -76,6 +76,12 @@ interface resolutionMessage {
     isVelocityBased: boolean;
 }
 
+interface resolutionMessageLite {
+    messageID: number;
+    update: Vec2;
+    isVelocityBased: boolean;
+}
+
 //
 // CRDT state interface
 //

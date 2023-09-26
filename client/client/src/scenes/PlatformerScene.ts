@@ -9,6 +9,7 @@ import type {
   State,
   platformerSceneData,
   resolutionMessage,
+  resolutionMessageLite,
 } from "./types";
 
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
@@ -456,49 +457,79 @@ export default class Platformer extends Phaser.Scene {
         (globalState: Y.Map<CRDT_PEER_STATE>) => {
             const myClientID = this.crdt.getClientID();
 
-            for (const [clientID, crdtPeerState] of globalState) {
-                console.log('observeGlobalState:', clientID, crdtPeerState);
-
-                // Iterate through messsage queue to get unprocessed messages
-                const incomingMessages: resolutionMessage[] = crdtPeerState.messages;
-                const unprocessedMessages: resolutionMessage[] = incomingMessages.filter(msg => !this.processedMessageIDs.has(msg.messageID));
-                console.log('unprocessedMessages:', JSON.stringify(unprocessedMessages));
-
-                // Apply unprocessed messages to local rendering
-                unprocessedMessages.forEach(msg => {
-                    const msgClientID = msg.clientID;
-                    const msgUpdate = msg.update;
-                    const msgIsVelocityBased = msg.isVelocityBased;
-
-                    if (!msgIsVelocityBased) {
-                        // Position based collision resolution
-
-                        // if msgClientID is not me, update their drawing directly (this is optimistic update!)
-                        this.peers.get(msgClientID)?.moveSprite(msgUpdate);
-
-                        // if msgClientID is myself, update playerController's info about my penguin dynamics
-                        if (msgClientID === myClientID) {
-                            this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
-                        }
-                    } else {
-                        // Velocity based collision resolution
-
-                        // if msgClientID is not me, update their drawing directly (this is optimistic update!)
-                        this.peers.get(msgClientID)?.changeSpriteVelocity(msgUpdate);
-
-                        // if msgClientID is myself, update playerController's info about my penguin dynamics
-                        if (msgClientID === myClientID) {
-                            this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
-                        }
-                    }
-
-                    // if msgClientID is me, update crdt awareness state (my state)
-                    // this.crdt.setPosition(this.playerController.getPosition());
-                })
-
-                // Mark those messages as processed locally (add to set)
-                unprocessedMessages.forEach(msg => {this.processedMessageIDs.add(msg.messageID)});
+            //
+            // Grab my message queue
+            //
+            const messages = globalState.get(myClientID.toString())?.messages;
+            if (messages === undefined) {
+                return;
             }
+
+            //
+            // Process all of them sequentially
+            //
+            messages.forEach(msg => {
+                const msgUpdate = msg.update;
+                const msgIsVelocityBased = msg.isVelocityBased;
+
+                if (!msgIsVelocityBased) {
+                    // Position based collision resolution
+                    this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
+                } else {
+                    // Velocity based collision resolution
+                    this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
+                }
+            })
+
+            //
+            // Clear my message queue
+            //
+            this.crdt.clearMyMessageQueue();
+
+
+            // for (const [clientID, crdtPeerState] of globalState) {
+            //     console.log('observeGlobalState:', clientID, crdtPeerState);
+
+            //     // Iterate through messsage queue to get unprocessed messages
+            //     const incomingMessages: resolutionMessage[] = crdtPeerState.messages;
+            //     const unprocessedMessages: resolutionMessage[] = incomingMessages.filter(msg => !this.processedMessageIDs.has(msg.messageID));
+            //     console.log('unprocessedMessages:', JSON.stringify(unprocessedMessages));
+
+            //     // Apply unprocessed messages to local rendering
+            //     unprocessedMessages.forEach(msg => {
+            //         const msgClientID = msg.clientID;
+            //         const msgUpdate = msg.update;
+            //         const msgIsVelocityBased = msg.isVelocityBased;
+
+            //         if (!msgIsVelocityBased) {
+            //             // Position based collision resolution
+
+            //             // if msgClientID is not me, update their drawing directly (this is optimistic update!)
+            //             this.peers.get(msgClientID)?.moveSprite(msgUpdate);
+
+            //             // // if msgClientID is myself, update playerController's info about my penguin dynamics
+            //             // if (msgClientID === myClientID) {
+            //             //     this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
+            //             // }
+            //         } else {
+            //             // Velocity based collision resolution
+
+            //             // if msgClientID is not me, update their drawing directly (this is optimistic update!)
+            //             this.peers.get(msgClientID)?.changeSpriteVelocity(msgUpdate);
+
+            //             // // if msgClientID is myself, update playerController's info about my penguin dynamics
+            //             // if (msgClientID === myClientID) {
+            //             //     this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
+            //             // }
+            //         }
+
+            //         // if msgClientID is me, update crdt awareness state (my state)
+            //         // this.crdt.setPosition(this.playerController.getPosition());
+            //     })
+
+            //     // Mark those messages as processed locally (add to set)
+            //     unprocessedMessages.forEach(msg => {this.processedMessageIDs.add(msg.messageID)});
+            // }
         }
     );
 
@@ -741,26 +772,26 @@ export default class Platformer extends Phaser.Scene {
                 };
                 const RESOLVE_VEL_COEF = 6;
                 const myNewVel = {
-                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
-                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
-                }
-                const theirNewVel = {
                     x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
                     y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
                 }
+                const theirNewVel = {
+                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
+                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
+                }
 
-                const resolveMeMessage: resolutionMessage = {
-                    messageID: Date.now() * this.crdt.getClientID(), // this messageID should be hash of things to guarantee uniqueness
-                    clientID: this.crdt.getClientID(),
-                    update: myNewVel,
-                    isVelocityBased: true,
-                }
-                const resolveThemMessage: resolutionMessage = {
-                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
-                    clientID: peerClientID,
-                    update: theirNewVel,
-                    isVelocityBased: true,
-                }
+                // const resolveMeMessage: resolutionMessage = {
+                //     messageID: Date.now() * this.crdt.getClientID(), // this messageID should be hash of things to guarantee uniqueness
+                //     clientID: this.crdt.getClientID(),
+                //     update: myNewVel,
+                //     isVelocityBased: true,
+                // }
+                // const resolveThemMessage: resolutionMessage = {
+                //     messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
+                //     clientID: peerClientID,
+                //     update: theirNewVel,
+                //     isVelocityBased: true,
+                // }
 
                 //
                 // Old code below for silly position-based collision resolution
@@ -792,9 +823,22 @@ export default class Platformer extends Phaser.Scene {
                 // };
 
 
-                this.crdt.addResolutionMessageToMyGlobalState(resolveMeMessage);
-                this.crdt.addResolutionMessageToMyGlobalState(resolveThemMessage);
+                // this.crdt.addResolutionMessageToMyGlobalState(resolveMeMessage);
 
+                //
+                // don't send message to myself; act upon it immediately
+                //
+                this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
+
+                //
+                // put the peer resolution message in their mailbox
+                //
+                const resolveThemMessage: resolutionMessageLite = {
+                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness
+                    update: theirNewVel,
+                    isVelocityBased: true,
+                }
+                this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolveThemMessage);
             }
         }
     }
