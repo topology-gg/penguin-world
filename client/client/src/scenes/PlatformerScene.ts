@@ -485,6 +485,7 @@ export default class Platformer extends Phaser.Scene {
       // Process all of them sequentially
       //
       messages.forEach((msg: ResolutionMessage) => {
+        console.log("message", msg)
         if ("update" in msg) {
           const msgUpdate = msg.update;
           const msgIsVelocityBased = msg.isVelocityBased;
@@ -699,7 +700,6 @@ export default class Platformer extends Phaser.Scene {
   }
 
   handleHitEvent(snowballId: number) {
-    console.log("despwan", snowballId)
     const resolutionMessage: ProjectileResolutionMessge = {
       messageID: snowballId,
       objectId: snowballId,
@@ -710,6 +710,8 @@ export default class Platformer extends Phaser.Scene {
 
     const peers = this.crdt.getPeers();
 
+    this.snowballs.find(s => s.id === snowballId)?.sprite.destroy();
+    
     for (const [peerClientID, peer] of peers) {
       this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolutionMessage);
     }
