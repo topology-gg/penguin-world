@@ -8,5 +8,5 @@ export enum MessageType {
 
 export enum ProjectileEvent {
   SPAWN = "SPAWN",
-  DESPWAN = "DESPWAN",
+  DESPAWN = "DESPAWN",
 }

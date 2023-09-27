@@ -81,6 +81,9 @@ export default class PlayerController {
 
       const gameObject = body.gameObject;
 
+      
+
+      console.log("collision data", data, gameObject)
       if (!gameObject) {
         return;
       }
