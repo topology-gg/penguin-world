@@ -80,10 +80,6 @@ export default class PlayerController {
       const body = data.bodyB as MatterJS.BodyType;
 
       const gameObject = body.gameObject;
-
-      
-
-      console.log("collision data", data, gameObject)
       if (!gameObject) {
         return;
       }
@@ -109,6 +105,10 @@ export default class PlayerController {
         }
         return;
       }
+      if(gameObject.snowballId) {
+        this.scene.events.emit("hit", gameObject.snowballId)
+      }
+
     });
 
   }

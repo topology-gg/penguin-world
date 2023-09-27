@@ -444,6 +444,7 @@ export default class Platformer extends Phaser.Scene {
           );
 
           this.events.addListener("throw", this.handleThrowEvent, this);
+          this.events.addListener("hit", this.handleHitEvent, this);
 
           this.cameras.main.startFollow(this.penquin, true);
           break;
@@ -659,6 +660,8 @@ export default class Platformer extends Phaser.Scene {
     snowball.setIgnoreGravity(true);
     snowball.setVelocity(velocityX, velocityY);
     snowball.setFriction(0, 0);
+    //Used to genereate valid DESPWAN events on collision
+    snowball.snowballId = messageId;
 
     setTimeout(() => {
       snowball.destroy();
@@ -676,9 +679,7 @@ export default class Platformer extends Phaser.Scene {
       sprite: snowball,
       id: messageId,
     };
-
-  
-
+    
     this.snowballs.push(newSnowball);
 
     const resolutionMessage: ProjectileResolutionMessge = {
@@ -695,6 +696,23 @@ export default class Platformer extends Phaser.Scene {
       this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolutionMessage);
     }
     
+  }
+
+  handleHitEvent(snowballId: number) {
+    console.log("despwan", snowballId)
+    const resolutionMessage: ProjectileResolutionMessge = {
+      messageID: snowballId,
+      objectId: snowballId,
+      projectileEvent: ProjectileEvent.DESPAWN,
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+    };
+
+    const peers = this.crdt.getPeers();
+
+    for (const [peerClientID, peer] of peers) {
+      this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolutionMessage);
+    }
   }
 
   updatePeers(t: number, dt: number) {
