@@ -91,6 +91,10 @@ export default class CharacterController {
         onEnter: this.jumpOnEnter,
         onUpdate: this.jumpOnUpdate,
       })
+      .addState("bump", {
+        onEnter: this.jumpOnEnter,
+        onUpdate: this.jumpOnUpdate,
+      })
       .setState("idle");
 
     this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {

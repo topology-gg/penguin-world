@@ -475,8 +475,10 @@ export default class Platformer extends Phaser.Scene {
                     this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
                 } else {
                     // Velocity based collision resolution
-                    const force : Phaser.Math.Vector2 = new Phaser.Math.Vector2(msgUpdate.x / 100, msgUpdate.y /100);
-                    this.playerController?.applyForce(force);
+                    // const force : Phaser.Math.Vector2 = new Phaser.Math.Vector2(msgUpdate.x / 100, msgUpdate.y /100);
+                    // this.playerController?.applyForce(force);
+                    // this.playerController?.setAnimState('bump');
+                    this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
                 }
             })
 
@@ -746,8 +748,15 @@ export default class Platformer extends Phaser.Scene {
                 //
                 // don't send message to myself; act upon it immediately
                 //
-                const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
-                this.playerController?.applyForce(myForce);
+                // const currAnimStateName = this.playerController?.getStateName() as string;
+                // if (currAnimStateName != 'bump') {
+                //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
+                //     this.playerController?.applyForce(myForce);
+                //     this.playerController?.setAnimState('bump');
+                //     // this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
+                // }
+                // this.playerController?.setAnimState('bump');
+                this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
 
                 //
                 // put the peer resolution message in their mailbox

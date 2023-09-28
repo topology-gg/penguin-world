@@ -76,6 +76,10 @@ export default class PlayerController {
         onEnter: this.jumpOnEnter,
         onUpdate: this.jumpOnUpdate,
       })
+      .addState("bump", {
+        onEnter: this.bumpOnEnter,
+        onUpdate: this.bumpOnUpdate,
+      })
       .setState("idle");
 
     this.sprite.setOnCollide((data: MatterJS.ICollisionPair) => {
@@ -88,7 +92,7 @@ export default class PlayerController {
       }
 
       if (gameObject instanceof Phaser.Physics.Matter.TileBody) {
-        if (this.stateMachine.isCurrentState("jump")) {
+        if (this.stateMachine.isCurrentState("jump") || this.stateMachine.isCurrentState("bump")) {
           this.stateMachine.setState("idle");
         }
         return;
@@ -142,6 +146,9 @@ export default class PlayerController {
     }
   }
 
+  //
+  // Walk state handling
+  //
   private walkOnEnter() {
     this.sprite.play("player-walk");
   }
@@ -170,7 +177,11 @@ export default class PlayerController {
     this.sprite.stop();
   }
 
+  //
+  // Jump state handling
+  //
   private jumpOnEnter() {
+    this.sprite.play("player-jump");
     this.sprite.setVelocityY(-12);
   }
 
@@ -186,10 +197,29 @@ export default class PlayerController {
     }
   }
 
+  //
+  // Bump state handling
+  //
+  private bumpOnEnter() {
+    this.sprite.play("player-bump");
+  }
+  private bumpOnUpdate() {
+    // do not accept user input
+  }
+
   private createAnimations() {
     this.sprite.anims.create({
       key: "player-idle",
       frames: [{ key: "penquin", frame: "penguin_walk01.png" }],
+    });
+
+    this.sprite.anims.create({
+        key: "player-bump",
+        frames: [{ key: "penquin", frame: "penguin_hurt.png" }],
+    });
+    this.sprite.anims.create({
+        key: "player-jump",
+        frames: [{ key: "penquin", frame: "penguin_jump02.png" }],
     });
 
     this.sprite.anims.create({
@@ -231,6 +261,14 @@ export default class PlayerController {
 
   setPosition(x: number, y: number) {
     this.sprite.setPosition(x, y);
+  }
+
+  setVelocity(vx: number, vy: number) {
+    this.sprite.setVelocity(vx,vy);
+  }
+
+  setAnimState(name: string) {
+    this.stateMachine.setState(name);
   }
 
   applyForce(force: Phaser.Math.Vector2) {
