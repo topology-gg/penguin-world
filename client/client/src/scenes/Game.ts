@@ -27,6 +27,7 @@ export default class Demo extends Phaser.Scene {
   private dialogue: InputText | undefined;
   private username = "";
   private inputText: InputText | undefined;
+  private lobbyInputText: InputText | undefined;
 
   private connectionContainers: connectionContainer[] = [];
 
@@ -39,6 +40,7 @@ export default class Demo extends Phaser.Scene {
     this.renderAcceptButton();
     this.renderWelcomeMessage();
     this.renderInputText();
+    this.renderLobbyInputText();
   }
   renderPlatformerButton() {
     var connectButton = this.add.existing(
@@ -46,14 +48,17 @@ export default class Demo extends Phaser.Scene {
         this,
         "Enter Platformer",
         (config.scale.width / 4) * 2,
-        config.scale.height / 2,
+        config.scale.height / 2 + 100,
         config.scale.width / 4 - 10,
         "large",
         () => {
-          const crdt = new CRDT();
+          const lobbyName = this.lobbyInputText?.text || "";
+          const crdt = new CRDT(lobbyName);
           const media = new Media(crdt.getClientID());
 
           this.removeSignalEvent();
+          this.game.config.lobbyName = lobbyName;
+
           this.scene.start("platformer", {
             peers: this.game.config.connections.getConnections(),
             username: this.username,
@@ -107,6 +112,28 @@ export default class Demo extends Phaser.Scene {
 
     // Set our input text as a member object
     this.inputText = inputText;
+  }
+
+  renderLobbyInputText() {
+    var lobbyInputTextConfig: IText.IConfig = {
+      text: "",
+      color: "black",
+      border: 1,
+      backgroundColor: "white",
+      placeholder: "Enter Lobby Name",
+    };
+    var lobbyInputText = new InputText(
+      this,
+      (config.scale.width / 4) * 2,
+      config.scale.height / 2 - 50,
+      500,
+      50,
+      lobbyInputTextConfig
+    );
+    this.add.existing(lobbyInputText);
+
+    // Set our lobby input text as a member object
+    this.lobbyInputText = lobbyInputText;
   }
 
   renderAcceptButton() {
