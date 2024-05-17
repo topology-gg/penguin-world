@@ -30,10 +30,10 @@ export default class CRDT {
 
   private readonly AWARENESS = "AWARENESS";
 
-  constructor() {
+  constructor(lobbyName: string) {
     this.doc = new Y.Doc();
     this.chatHistoryRemote = this.doc.getArray("chat-history");
-    this.provider = new WebrtcProvider("the-penguin-world", this.doc, {
+    this.provider = new WebrtcProvider(lobbyName, this.doc, {
       signaling: [`${process.env.SIGNALING_SERVER}`],
     });
 
@@ -172,93 +172,93 @@ export default class CRDT {
     return this.peers;
   }
 
-    //
-    // methods that access & manipulate CRDT global state
-    //
-    observeGlobalState(
-        callback: (globalState: Y.Map<CRDT_PEER_STATE>) => void
-    ) {
-        this.globalState.observe(
-            (event: Y.YMapEvent<CRDT_PEER_STATE>, tx: Y.Transaction) => {
-                // console.log(`globalState observe(): last event: ${JSON.stringify(event)}`);
-                callback(event.target);
-            }
-        );
+  //
+  // methods that access & manipulate CRDT global state
+  //
+  observeGlobalState(
+    callback: (globalState: Y.Map<CRDT_PEER_STATE>) => void
+  ) {
+    this.globalState.observe(
+      (event: Y.YMapEvent<CRDT_PEER_STATE>, tx: Y.Transaction) => {
+        // console.log(`globalState observe(): last event: ${JSON.stringify(event)}`);
+        callback(event.target);
+      }
+    );
+  }
+
+  addResolutionMessageToMyGlobalState (message: resolutionMessage) {
+    // grab my current message queue from crdt
+    const myClientID = this.doc.clientID;
+    let myCurrState = this.globalState.get(myClientID.toString());
+    if (myCurrState === undefined) {
+      myCurrState = {
+        username: undefined,
+        position: undefined,
+        input: undefined,
+        text: undefined,
+        audio: undefined,
+        messages: []
+      };
+    }
+    const myCurrMessageQueue = myCurrState.messages as resolutionMessage[];
+
+    // push new message to queue
+    const newMessageQueue = myCurrMessageQueue.concat([message]);
+
+    // update crdt
+    this.globalState.set(myClientID.toString(), {
+      ...myCurrState,
+      messages: newMessageQueue
+    });
+  }
+
+  clearMyMessageQueue () {
+    const myClientID = this.doc.clientID;
+
+    // check if my queue is already empty; if so, skip crdt update
+    const currQueue = this.globalState.get(myClientID.toString())?.messages;
+    if (currQueue === undefined) {
+      return;
+    }
+    if (currQueue.length == 0) {
+      return;
     }
 
-    addResolutionMessageToMyGlobalState (message: resolutionMessage) {
-        // grab my current message queue from crdt
-        const myClientID = this.doc.clientID;
-        let myCurrState = this.globalState.get(myClientID.toString());
-        if (myCurrState === undefined) {
-            myCurrState = {
-                username: undefined,
-                position: undefined,
-                input: undefined,
-                text: undefined,
-                audio: undefined,
-                messages: []
-            };
-        }
-        const myCurrMessageQueue = myCurrState.messages as resolutionMessage[];
+    // otherwise clear the queue in crdt
+    const emptyState = {
+      username: undefined,
+      position: undefined,
+      input: undefined,
+      text: undefined,
+      audio: undefined,
+      messages: []
+    };
+    this.globalState.set(myClientID.toString(), emptyState);
+  }
 
-        // push new message to queue
-        const newMessageQueue = myCurrMessageQueue.concat([message]);
-
-        // update crdt
-        this.globalState.set(myClientID.toString(), {
-            ...myCurrState,
-            messages: newMessageQueue
-        });
+  addResolutionMessageToPeerMessageQueue (clientID: number, message: resolutionMessageLite) {
+    // grab the target message queue from crdt
+    let currState = this.globalState.get(clientID.toString());
+    if (currState === undefined) {
+      currState = {
+        username: undefined,
+        position: undefined,
+        input: undefined,
+        text: undefined,
+        audio: undefined,
+        messages: []
+      };
     }
+    const currMessageQueue = currState.messages as resolutionMessageLite[];
 
-    clearMyMessageQueue () {
-        const myClientID = this.doc.clientID;
+    // push new message to queue
+    const newMessageQueue = currMessageQueue.concat([message]);
 
-        // check if my queue is already empty; if so, skip crdt update
-        const currQueue = this.globalState.get(myClientID.toString())?.messages;
-        if (currQueue === undefined) {
-            return;
-        }
-        if (currQueue.length == 0) {
-            return;
-        }
-
-        // otherwise clear the queue in crdt
-        const emptyState = {
-            username: undefined,
-            position: undefined,
-            input: undefined,
-            text: undefined,
-            audio: undefined,
-            messages: []
-        };
-        this.globalState.set(myClientID.toString(), emptyState);
-    }
-
-    addResolutionMessageToPeerMessageQueue (clientID: number, message: resolutionMessageLite) {
-        // grab the target message queue from crdt
-        let currState = this.globalState.get(clientID.toString());
-        if (currState === undefined) {
-            currState = {
-                username: undefined,
-                position: undefined,
-                input: undefined,
-                text: undefined,
-                audio: undefined,
-                messages: []
-            };
-        }
-        const currMessageQueue = currState.messages as resolutionMessageLite[];
-
-        // push new message to queue
-        const newMessageQueue = currMessageQueue.concat([message]);
-
-        // update crdt
-        this.globalState.set(clientID.toString(), {
-            ...currState,
-            messages: newMessageQueue
-        });
-    }
-
+    // update crdt
+    this.globalState.set(clientID.toString(), {
+      ...currState,
+      messages: newMessageQueue
+    });
+  }
+  
 }
