@@ -22,6 +22,16 @@ export default class PlayerController {
   private speechText: Phaser.GameObjects.Text;
 
   private chatTimeoutID: any;
+
+  private touchStartX: number = 0;
+  private touchStartY: number = 0;
+  private isTouching: boolean = false;
+  private moveDirection: "left" | "right" | null = null;
+  private jump: boolean = false;
+  private moveEvent: Phaser.Time.TimerEvent | null = null;
+
+  private jumpThreshold: number = 100;
+
   constructor(
     scene: Phaser.Scene,
     sprite: Phaser.Physics.Matter.Sprite,
@@ -98,6 +108,15 @@ export default class PlayerController {
         return;
       }
     });
+
+    // Add touch input handlers
+    this.scene.input.on('pointerdown', this.handlePointerDown, this);
+    this.scene.input.on('pointermove', this.handlePointerMove, this);
+    this.scene.input.on('pointerup', this.handlePointerUp, this);
+  }
+
+  setJumpThreshold(threshold: number) {
+    this.jumpThreshold = threshold;
   }
 
   chat(input: string) {
@@ -136,12 +155,12 @@ export default class PlayerController {
   }
 
   private idleOnUpdate() {
-    if (this.cursors.left.isDown || this.cursors.right.isDown) {
+    if (this.cursors.left.isDown || this.cursors.right.isDown || this.isTouching) {
       this.stateMachine.setState("walk");
     }
 
     const spaceJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.space);
-    if (spaceJustPressed) {
+    if (spaceJustPressed || this.jump) {
       this.stateMachine.setState("jump");
     }
   }
@@ -154,21 +173,35 @@ export default class PlayerController {
   }
 
   private walkOnUpdate() {
-    const speed = 5;
+    const baseSpeed = 5;
 
-    if (this.cursors.left.isDown) {
-      this.sprite.flipX = true;
-      this.sprite.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown) {
-      this.sprite.flipX = false;
-      this.sprite.setVelocityX(speed);
+    if (this.isTouching) {
+      const pointer = this.scene.input.activePointer;
+      const deltaX = pointer.x - this.touchStartX;
+      const velocityX = Phaser.Math.Clamp(deltaX / 10, -baseSpeed, baseSpeed);
+
+      if (velocityX < 0) {
+        this.sprite.flipX = true;
+      } else if (velocityX > 0) {
+        this.sprite.flipX = false;
+      }
+
+      this.sprite.setVelocityX(velocityX);
     } else {
-      this.sprite.setVelocityX(0);
-      this.stateMachine.setState("idle");
+      if (this.cursors.left.isDown) {
+        this.sprite.flipX = true;
+        this.sprite.setVelocityX(-baseSpeed);
+      } else if (this.cursors.right.isDown) {
+        this.sprite.flipX = false;
+        this.sprite.setVelocityX(baseSpeed);
+      } else {
+        this.sprite.setVelocityX(0);
+        this.stateMachine.setState("idle");
+      }
     }
 
     const spaceJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.space);
-    if (spaceJustPressed) {
+    if (spaceJustPressed || this.jump) {
       this.stateMachine.setState("jump");
     }
   }
@@ -186,14 +219,31 @@ export default class PlayerController {
   }
 
   private jumpOnUpdate() {
-    const speed = 5;
+    const baseSpeed = 5;
 
-    if (this.cursors.left.isDown) {
-      this.sprite.flipX = true;
-      this.sprite.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown) {
-      this.sprite.flipX = false;
-      this.sprite.setVelocityX(speed);
+    if (this.isTouching) {
+      const pointer = this.scene.input.activePointer;
+      const deltaX = pointer.x - this.touchStartX;
+      const velocityX = Phaser.Math.Clamp(deltaX / 10, -baseSpeed, baseSpeed);
+
+      if (velocityX < 0) {
+        this.sprite.flipX = true;
+      } else if (velocityX > 0) {
+        this.sprite.flipX = false;
+      }
+
+      this.sprite.setVelocityX(velocityX);
+    } else {
+      if (this.cursors.left.isDown) {
+        this.sprite.flipX = true;
+        this.sprite.setVelocityX(-baseSpeed);
+      } else if (this.cursors.right.isDown) {
+        this.sprite.flipX = false;
+        this.sprite.setVelocityX(baseSpeed);
+      } else {
+        this.sprite.setVelocityX(0);
+        this.stateMachine.setState("idle");
+      }
     }
   }
 
@@ -214,12 +264,12 @@ export default class PlayerController {
     });
 
     this.sprite.anims.create({
-        key: "player-bump",
-        frames: [{ key: "penquin", frame: "penguin_hurt.png" }],
+      key: "player-bump",
+      frames: [{ key: "penquin", frame: "penguin_hurt.png" }],
     });
     this.sprite.anims.create({
-        key: "player-jump",
-        frames: [{ key: "penquin", frame: "penguin_jump02.png" }],
+      key: "player-jump",
+      frames: [{ key: "penquin", frame: "penguin_jump02.png" }],
     });
 
     this.sprite.anims.create({
@@ -247,7 +297,67 @@ export default class PlayerController {
     });
   }
 
-  // to share state with peers
+  handlePointerDown(pointer : Phaser.Input.Pointer) {
+    this.touchStartX = pointer.x;
+    this.touchStartY = pointer.y;
+    this.isTouching = true;
+
+    this.moveEvent = this.scene.time.addEvent({
+      delay: 50, 
+      callback: this.updateMovement,
+      callbackScope: this,
+      loop: true,
+    });
+  }
+
+  handlePointerMove(pointer : Phaser.Input.Pointer) {
+    if (!this.isTouching) {
+      return;
+    }
+
+    const deltaX = pointer.x - this.touchStartX;
+    const deltaY = this.touchStartY - pointer.y; 
+
+    if (deltaX < 0) {
+      this.moveDirection = "left";
+    } else if (deltaX > 0) {
+      this.moveDirection = "right";
+    }
+
+    this.jump = deltaY > this.jumpThreshold;
+  }
+
+  handlePointerUp() {
+    this.isTouching = false;
+    this.moveDirection = null;
+    this.jump = false;
+    this.sprite.setVelocityX(0);
+    this.stateMachine.setState("idle");
+
+    if (this.moveEvent) {
+      this.moveEvent.remove(false);
+      this.moveEvent = null;
+    }
+  }
+
+  updateMovement() {
+    const maxSpeed = 10;
+
+    if (this.moveDirection === "left") {
+      const speed = Phaser.Math.Clamp(-maxSpeed * (this.touchStartX - this.scene.input.activePointer.x) / 10, -maxSpeed, maxSpeed);
+      this.sprite.flipX = true;
+      this.sprite.setVelocityX(speed);
+    } else if (this.moveDirection === "right") {
+      const speed = Phaser.Math.Clamp(maxSpeed * (this.scene.input.activePointer.x - this.touchStartX) / 10, -maxSpeed, maxSpeed);
+      this.sprite.flipX = false;
+      this.sprite.setVelocityX(speed);
+    }
+
+    if (this.jump) {
+      this.stateMachine.setState("jump");
+    }
+  }
+
   getStateName() {
     return this.stateMachine.getCurrentStateName();
   }
