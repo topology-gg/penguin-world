@@ -22,6 +22,16 @@ export default class PlayerController {
   private speechText: Phaser.GameObjects.Text;
 
   private chatTimeoutID: any;
+
+  private touchStartX: number = 0;
+  private touchStartY: number = 0;
+  private isTouching: boolean = false;
+  private moveDirection: "left" | "right" | null = null;
+  private jump: boolean = false;
+  private moveEvent: Phaser.Time.TimerEvent | null = null;
+
+  private jumpThreshold: number = 100; // Threshold for jumping
+
   constructor(
     scene: Phaser.Scene,
     sprite: Phaser.Physics.Matter.Sprite,
@@ -98,6 +108,11 @@ export default class PlayerController {
         return;
       }
     });
+
+    // Add touch input handlers
+    this.scene.input.on('pointerdown', this.handlePointerDown, this);
+    this.scene.input.on('pointermove', this.handlePointerMove, this);
+    this.scene.input.on('pointerup', this.handlePointerUp, this);
   }
 
   chat(input: string) {
@@ -136,12 +151,12 @@ export default class PlayerController {
   }
 
   private idleOnUpdate() {
-    if (this.cursors.left.isDown || this.cursors.right.isDown) {
+    if (this.cursors.left.isDown || this.cursors.right.isDown || this.moveDirection) {
       this.stateMachine.setState("walk");
     }
 
     const spaceJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.space);
-    if (spaceJustPressed) {
+    if (spaceJustPressed || this.jump) {
       this.stateMachine.setState("jump");
     }
   }
@@ -156,10 +171,10 @@ export default class PlayerController {
   private walkOnUpdate() {
     const speed = 5;
 
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.moveDirection === "left") {
       this.sprite.flipX = true;
       this.sprite.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.moveDirection === "right") {
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
     } else {
@@ -168,7 +183,7 @@ export default class PlayerController {
     }
 
     const spaceJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.space);
-    if (spaceJustPressed) {
+    if (spaceJustPressed || this.jump) {
       this.stateMachine.setState("jump");
     }
   }
@@ -188,10 +203,10 @@ export default class PlayerController {
   private jumpOnUpdate() {
     const speed = 5;
 
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.moveDirection === "left") {
       this.sprite.flipX = true;
       this.sprite.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.moveDirection === "right") {
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
     }
@@ -247,7 +262,65 @@ export default class PlayerController {
     });
   }
 
-  // to share state with peers
+  handlePointerDown(pointer : Phaser.Input.Pointer) {
+    this.touchStartX = pointer.x;
+    this.touchStartY = pointer.y;
+    this.isTouching = true;
+
+    // Start a looping event to continuously check the movement direction
+    this.moveEvent = this.scene.time.addEvent({
+      delay: 50, // Adjust the delay as needed
+      callback: this.updateMovement,
+      callbackScope: this,
+      loop: true,
+    });
+  }
+
+  handlePointerMove(pointer : Phaser.Input.Pointer) {
+    if (!this.isTouching) {
+      return;
+    }
+
+    const deltaX = pointer.x - this.touchStartX;
+    const deltaY = this.touchStartY - pointer.y; // Inverted for upward direction
+
+    if (deltaX < 0) {
+      this.moveDirection = "left";
+    } else if (deltaX > 0) {
+      this.moveDirection = "right";
+    }
+
+    this.jump = deltaY > this.jumpThreshold; // Set a threshold for jump
+  }
+
+  handlePointerUp() {
+    this.isTouching = false;
+    this.moveDirection = null;
+    this.jump = false;
+    this.sprite.setVelocityX(0);
+    this.stateMachine.setState("idle");
+
+    // Stop the movement event
+    if (this.moveEvent) {
+      this.moveEvent.remove(false);
+      this.moveEvent = null;
+    }
+  }
+
+  updateMovement() {
+    if (this.moveDirection === "left") {
+      this.sprite.flipX = true;
+      this.sprite.setVelocityX(-5);
+    } else if (this.moveDirection === "right") {
+      this.sprite.flipX = false;
+      this.sprite.setVelocityX(5);
+    }
+
+    if (this.jump) {
+      this.stateMachine.setState("jump");
+    }
+  }
+
   getStateName() {
     return this.stateMachine.getCurrentStateName();
   }
