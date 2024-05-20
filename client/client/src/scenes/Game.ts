@@ -99,6 +99,7 @@ export default class Demo extends Phaser.Scene {
       color: "black",
       border: 1,
       backgroundColor: "white",
+      placeholder: "Enter Username",
     };
     var inputText = new InputText(
       this,
