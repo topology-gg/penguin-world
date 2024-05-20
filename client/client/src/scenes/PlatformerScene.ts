@@ -471,43 +471,15 @@ export default class Platformer extends Phaser.Scene {
     this.crdt.aware();
     this.crdt.setUsername({ username: this.username });
 
-    this.crdt.observeGlobalState(
-        (globalState: Y.Map<CRDT_PEER_STATE>) => {
-            const myClientID = this.crdt.getClientID();
-
-            //
-            // Grab my message queue
-            //
-            const messages = globalState.get(myClientID.toString())?.messages;
-            if (messages === undefined) {
-                return;
-            }
-
-            //
-            // Process all of them sequentially
-            //
-            messages.forEach((msg: resolutionMessageLite) => {
-                const msgUpdate = msg.update;
-                const msgIsVelocityBased = msg.isVelocityBased;
-
-                if (!msgIsVelocityBased) {
-                    // Position based collision resolution
-                    this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
-                } else {
-                    // Velocity based collision resolution
-                    // const force : Phaser.Math.Vector2 = new Phaser.Math.Vector2(msgUpdate.x / 100, msgUpdate.y /100);
-                    // this.playerController?.applyForce(force);
-                    // this.playerController?.setAnimState('bump');
-                    this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
-                }
-            })
+    this.crdt.observeGlobalState((globalState: Y.Map<CRDT_PEER_STATE>) => {
+      const myClientID = this.crdt.getClientID();
 
       //
       // Grab my message queue
       //
       const messages = globalState.get(myClientID.toString())?.messages;
       if (messages === undefined) {
-        return;
+          return;
       }
 
       //
@@ -573,6 +545,7 @@ export default class Platformer extends Phaser.Scene {
       //
       this.crdt.clearMyMessageQueue();
     });
+
     this.crdt.observeChatHistoryRemote(
       (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
         if (this.chatHistoryRemotePointer === undefined) {
@@ -853,87 +826,85 @@ export default class Platformer extends Phaser.Scene {
           continue;
         }
 
+        // get coordinates of interest
+        const myPos = me.getPosition();
+        const myX = myPos.x;
+        const myY = myPos.y;
+        const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
+        const theirX = theirPos.x;
+        const theirY = theirPos.y;
 
-            // get coordinates of interest
-            const myPos = me.getPosition();
-            const myX = myPos.x;
-            const myY = myPos.y;
-            const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
-            const theirX = theirPos.x;
-            const theirY = theirPos.y;
+        // check for overlap
+        const distanceX = abs(myX - theirX);
+        const distanceY = abs(myY - theirY);
+        const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
 
-            // check for overlap
-            const distanceX = abs(myX - theirX);
-            const distanceY = abs(myY - theirY);
-            const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
+        // if overlap, send resolution message via crdt (use crdt as mailbox)
+        if (isOverlapped) {
+            console.log('isOverlapped!');
 
-            // if overlap, send resolution message via crdt (use crdt as mailbox)
-            if (isOverlapped) {
-                console.log('isOverlapped!');
+            //
+            // calculate the magnitude of the displacement vector from them to me
+            //
+            const normalizationFactor = sqrt((myX - theirX)**2 + (myY - theirY)**2);
+            const normalizationFactorSafe = normalizationFactor == 0 ? 1 : normalizationFactor;
 
-                //
-                // calculate the magnitude of the displacement vector from them to me
-                //
-                const normalizationFactor = sqrt((myX - theirX)**2 + (myY - theirY)**2);
-                const normalizationFactorSafe = normalizationFactor == 0 ? 1 : normalizationFactor;
+            //
+            // calculate the normalised displacement vector from them to me
+            //
+            const normalizedDisplacementVectorMeMinusPeer = {
+                x: (myX - theirX)/normalizationFactorSafe,
+                y: (myY - theirY)/normalizationFactorSafe
+            };
 
-                //
-                // calculate the normalised displacement vector from them to me
-                //
-                const normalizedDisplacementVectorMeMinusPeer = {
-                    x: (myX - theirX)/normalizationFactorSafe,
-                    y: (myY - theirY)/normalizationFactorSafe
-                };
+            //
+            // this coef resembles restitution coefficient
+            //
+            const RESOLVE_VEL_COEF = 6;
 
-                //
-                // this coef resembles restitution coefficient
-                //
-                const RESOLVE_VEL_COEF = 6;
-
-                //
-                // calculate new velocities for myself and them for resolving the collision
-                //
-                const myNewVel = {
-                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
-                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
-                }
-                const theirNewVel = {
-                    x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
-                    y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
-                }
-                
-                //
-                // don't send message to myself; act upon it immediately
-                //
-                const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(
-                  myNewVel.x / 100,
-                  myNewVel.y / 100
-                );
-                this.playerController?.applyForce(myForce);
-
-                //
-                // don't send message to myself; act upon it immediately
-                //
-                // const currAnimStateName = this.playerController?.getStateName() as string;
-                // if (currAnimStateName != 'bump') {
-                //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
-                //     this.playerController?.applyForce(myForce);
-                //     this.playerController?.setAnimState('bump');
-                //     // this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
-                // }
-                // this.playerController?.setAnimState('bump');
-                this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
-
-                //
-                // put the peer resolution message in their mailbox
-                //
-                const resolveThemMessage: resolutionMessageLite = {
-                    messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness; NOTE: BYZANTINE FAULT VULNERABLE!
-                    update: theirNewVel,
-                    isVelocityBased: true,
-                }
-                this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolveThemMessage);
+            //
+            // calculate new velocities for myself and them for resolving the collision
+            //
+            const myNewVel = {
+                x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
+                y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
             }
+            const theirNewVel = {
+                x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
+                y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
+            }
+            
+            //
+            // don't send message to myself; act upon it immediately
+            //
+            const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(
+              myNewVel.x / 100,
+              myNewVel.y / 100
+            );
+            this.playerController?.applyForce(myForce);
+
+            //
+            // don't send message to myself; act upon it immediately
+            //
+            // const currAnimStateName = this.playerController?.getStateName() as string;
+            // if (currAnimStateName != 'bump') {
+            //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
+            //     this.playerController?.applyForce(myForce);
+            //     this.playerController?.setAnimState('bump');
+            //     // this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
+            // }
+            // this.playerController?.setAnimState('bump');
+            this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
+
+            //
+            // put the peer resolution message in their mailbox
+            //
+            const resolveThemMessage: resolutionMessageLite = {
+                messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness; NOTE: BYZANTINE FAULT VULNERABLE!
+                update: theirNewVel,
+                isVelocityBased: true,
+            }
+            this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolveThemMessage);
         }
       }
     }
