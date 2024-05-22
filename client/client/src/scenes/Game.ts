@@ -109,6 +109,8 @@ export default class Demo extends Phaser.Scene {
       50,
       inputTextConfig
     );
+    inputText.setStyle("margin-top", "5px")
+
     this.add.existing(inputText);
 
     // Set our input text as a member object

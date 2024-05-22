@@ -137,7 +137,7 @@ export default class Platformer extends Phaser.Scene {
     const buttonY = config.scale.height / 2 - 100; 
     const buttonSpacing = 50;
 
-    const helloButton = this.add.text(buttonX, buttonY, "😁", {
+    this.add.text(buttonX, buttonY, "😁", {
         fontSize: "32px",
         backgroundColor: "#000",
         color: "#fff",
@@ -148,7 +148,7 @@ export default class Platformer extends Phaser.Scene {
         .setScrollFactor(0, 0)
         .setDepth(1000);
 
-    const waveButton = this.add.text(buttonX, buttonY + buttonSpacing, "👋", {
+    this.add.text(buttonX, buttonY + buttonSpacing, "👋", {
         fontSize: "32px",
         backgroundColor: "#000",
         color: "#fff",
@@ -159,7 +159,7 @@ export default class Platformer extends Phaser.Scene {
         .setScrollFactor(0, 0) 
         .setDepth(1000); 
 
-    const danceButton = this.add.text(buttonX, buttonY + buttonSpacing * 2, "👍", {
+    this.add.text(buttonX, buttonY + buttonSpacing * 2, "👍", {
         fontSize: "32px",
         backgroundColor: "#000",
         color: "#fff",
