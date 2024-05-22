@@ -30,10 +30,10 @@ export default class CRDT {
 
   private readonly AWARENESS = "AWARENESS";
 
-  constructor() {
+  constructor(lobbyName: string) {
     this.doc = new Y.Doc();
     this.chatHistoryRemote = this.doc.getArray("chat-history");
-    this.provider = new WebrtcProvider("the-penguin-world", this.doc, {
+    this.provider = new WebrtcProvider(lobbyName, this.doc, {
       signaling: [`${process.env.SIGNALING_SERVER}`],
     });
 

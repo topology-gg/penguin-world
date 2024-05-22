@@ -87,5 +87,13 @@ var game = new Phaser.Game(
   })
 );
 
-// we are making connections global, persisting between scenes
+// Function to handle page reload on resize
+function handleResize() {
+  window.location.reload();
+}
+
+// Attach resize event listener to window
+window.addEventListener('resize', handleResize);
+
+// Make connections global, persisting between scenes
 game.config.connections = new Connections();
