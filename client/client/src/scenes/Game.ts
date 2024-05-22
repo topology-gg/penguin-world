@@ -19,10 +19,6 @@ export default class Demo extends Phaser.Scene {
   }
 
   private _connectButton: DefaultButton;
-  private prevConnectionBtn: DefaultButton;
-  private nextConnectionBtn: DefaultButton;
-
-  private connectionIndex: number = 0;
 
   private dialogue: InputText | undefined;
   private username = "";
@@ -33,7 +29,6 @@ export default class Demo extends Phaser.Scene {
 
   private removeSignalEvent: any = () => {};
 
-  //private scene : Phaser.Scene
   preload() {}
 
   create() {
@@ -74,11 +69,12 @@ export default class Demo extends Phaser.Scene {
 
   renderWelcomeMessage() {
     var welcomeMessageConfig: IText.IConfig = {
-      text: "Welcome to esotere \n Select your username",
+      text: "Welcome to esotere",
       color: "black",
       border: 1,
       backgroundColor: "white",
       readOnly: true,
+      align: "center",
     };
     var welcomeMessage = new InputText(
       this,
@@ -146,7 +142,7 @@ export default class Demo extends Phaser.Scene {
     this._connectButton = this.add.existing(
       new DefaultButton(
         this,
-        "Enter username",
+        "Confirm",
         (config.scale.width / 4) * 2,
         config.scale.height / 2,
         config.scale.width / 4 - 10,
@@ -185,71 +181,6 @@ export default class Demo extends Phaser.Scene {
     return connectButton;
   }
 
-  incrementConnectionIndex() {
-    this.connectionContainers[this.connectionIndex].yourId.setVisible(false);
-    this.connectionContainers[this.connectionIndex].otherId.setVisible(false);
-    this.connectionContainers[this.connectionIndex].connectButton.setVisible(
-      false
-    );
-    this.connectionIndex++;
-    if (this.connectionIndex >= this.connectionContainers.length - 1) {
-      this.nextConnectionBtn.disable();
-    }
-    this.prevConnectionBtn.enable();
-    this.connectionContainers[this.connectionIndex].yourId.setVisible(true);
-    this.connectionContainers[this.connectionIndex].otherId.setVisible(true);
-    this.connectionContainers[this.connectionIndex].connectButton.setVisible(
-      true
-    );
-  }
-
-  decrementConnectionIndex() {
-    this.connectionContainers[this.connectionIndex].yourId.setVisible(false);
-    this.connectionContainers[this.connectionIndex].otherId.setVisible(false);
-    this.connectionContainers[this.connectionIndex].connectButton.setVisible(
-      false
-    );
-    this.connectionIndex--;
-    if (this.connectionIndex <= 0) {
-      this.prevConnectionBtn.disable();
-    }
-    this.nextConnectionBtn.enable();
-    this.connectionContainers[this.connectionIndex].yourId.setVisible(true);
-    this.connectionContainers[this.connectionIndex].otherId.setVisible(true);
-    this.connectionContainers[this.connectionIndex].connectButton.setVisible(
-      true
-    );
-  }
-
-  renderConnectionScrollButtons() {
-    this.prevConnectionBtn = this.add.existing(
-      new DefaultButton(
-        this,
-        "Prev",
-        (config.scale.width / 6) * 2,
-        config.scale.height / 2 + 200,
-        config.scale.width / 16 - 10,
-        "large",
-        () => this.decrementConnectionIndex()
-      )
-    );
-
-    this.nextConnectionBtn = this.add.existing(
-      new DefaultButton(
-        this,
-        "Next",
-        (config.scale.width / 6) * 4,
-        config.scale.height / 2 + 200,
-        config.scale.width / 16 - 10,
-        "large",
-        () => this.incrementConnectionIndex()
-      )
-    );
-
-    this.prevConnectionBtn.disable();
-    this.nextConnectionBtn.disable();
-  }
-
   renderInitializeConnectButton() {
     var connectButton = this.add.existing(
       new DefaultButton(
@@ -286,74 +217,6 @@ export default class Demo extends Phaser.Scene {
     return connectButton;
   }
 
-  renderConnection(is_initiator: boolean) {
-    var yourIdFieldConfig: IText.IConfig = {
-      text: "",
-      color: "black",
-      border: 1,
-      backgroundColor: "white",
-      readOnly: true,
-    };
-    var yourId = new InputText(
-      this,
-      (config.scale.width / 4) * 2,
-      config.scale.height / 2 + (is_initiator ? 0 : 100),
-      500,
-      50,
-      yourIdFieldConfig
-    );
-    this.add.existing(yourId);
-
-    var otherIdFieldConfig: IText.IConfig = {
-      text: "",
-      color: "black",
-      border: 1,
-      backgroundColor: "white",
-      readOnly: false,
-      placeholder: "paste your peers id here",
-    };
-    var otherId = new InputText(
-      this,
-      (config.scale.width / 4) * 2,
-      config.scale.height / 2 + (is_initiator ? 100 : 0),
-      500,
-      50,
-      otherIdFieldConfig
-    );
-
-    this.add.existing(otherId);
-
-    let connectButton = this.renderConnectButton();
-
-    if (
-      this.prevConnectionBtn == undefined ||
-      this.nextConnectionBtn == undefined
-    ) {
-      this.renderConnectionScrollButtons();
-    }
-
-    if (
-      this.connectionContainers.length == 1 ||
-      this.connectionContainers.length >= this.connectionIndex
-    ) {
-      this.nextConnectionBtn.enable();
-    }
-
-    if (this.connectionContainers.length > 0) {
-      yourId.setVisible(false);
-      otherId.setVisible(false);
-      connectButton.setVisible(false);
-    }
-
-    this.connectionContainers.push({
-      yourId,
-      otherId,
-      connectButton,
-    });
-
-    this.initializePeer(is_initiator);
-  }
-
   private attachSignalEvent({ peer, index }: PeerInfo) {
     let username = this.username;
 
@@ -371,6 +234,7 @@ export default class Demo extends Phaser.Scene {
     this.removeSignalEvent = () => peer.removeListener("signal", signalData);
     peer.on("signal", signalData);
   }
+
   initializePeer(is_initiator: boolean) {
     this.game.config.connections.initializePeer(
       is_initiator,
