@@ -769,6 +769,7 @@ export default class Platformer extends Phaser.Scene {
                     isVelocityBased: true,
                 }
                 this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolveThemMessage);
+            }
         }
       }
     }
