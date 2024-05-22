@@ -7,8 +7,7 @@ import {
   USERNAME_Y_OFFSET,
 } from "../utils/constants";
 import ObstaclesController from "./ObstaclesController";
-
-type CursorKeys = Phaser.Types.Input.Keyboard.CursorKeys;
+import { CursorKeys } from "../scenes/types";
 
 export default class PlayerController {
   private scene: Phaser.Scene;
@@ -45,7 +44,6 @@ export default class PlayerController {
     this.obstacles = obstacles;
 
     this.createAnimations();
-
     this.stateMachine = new StateMachine(this, "player");
 
     this.speechText = scene.add.text(
@@ -96,17 +94,35 @@ export default class PlayerController {
       const body = data.bodyB as MatterJS.BodyType;
 
       const gameObject = body.gameObject;
-
       if (!gameObject) {
         return;
       }
 
       if (gameObject instanceof Phaser.Physics.Matter.TileBody) {
-        if (this.stateMachine.isCurrentState("jump") || this.stateMachine.isCurrentState("bump")) {
+        // show coordinates of both objects
+        
+        const characterBottom = Math.floor(this.sprite.body.position.y - this.sprite.height / 2);
+
+        const characterLeft = this.sprite.body.position.x - this.sprite.width / 2;
+        const characterRight = this.sprite.body.position.x + this.sprite.width / 2;        
+
+        const tileTop = body.position.y - gameObject.tile.height / 2;
+        const tileLeft = body.position.x - gameObject.tile.width / 2;
+        const tileRight = body.position.x + gameObject.tile.width / 2;
+
+        const characterAboveTile = characterBottom <= tileTop && this.sprite.body.velocity.y >= 0
+        const characterLeftOfTile = characterRight - 10 <= tileLeft
+        const characterRightOfTile = characterLeft + 10 >= tileRight
+
+        if ((this.stateMachine.isCurrentState("jump") || this.stateMachine.isCurrentState("bump")) && (characterAboveTile || characterLeftOfTile || characterRightOfTile)) {
           this.stateMachine.setState("idle");
         }
         return;
       }
+      if(gameObject.snowballId) {
+        this.scene.events.emit("hit", gameObject.snowballId)
+      }
+
     });
 
     // Add touch input handlers
@@ -163,6 +179,11 @@ export default class PlayerController {
     if (spaceJustPressed || this.jump) {
       this.stateMachine.setState("jump");
     }
+
+    const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
+    if (fJustPressed) {
+      this.throwSnowball();
+    }
   }
 
   //
@@ -201,10 +222,18 @@ export default class PlayerController {
     }
 
     const spaceJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.space);
+
     if (spaceJustPressed || this.jump) {
       this.stateMachine.setState("jump");
     }
+
+    const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
+    if (fJustPressed) {
+      this.throwSnowball();
+    }
   }
+
+
 
   private walkOnExit() {
     this.sprite.stop();
@@ -216,6 +245,21 @@ export default class PlayerController {
   private jumpOnEnter() {
     this.sprite.play("player-jump");
     this.sprite.setVelocityY(-12);
+  }
+
+  private throwSnowball() {
+    const facingLeft = this.sprite.flipX;
+
+    const positionAdjust = facingLeft
+      ? -10 - this.sprite.width / 2
+      : 10 + this.sprite.width / 2;
+    const position = new Phaser.Math.Vector2(
+      this.sprite.x + positionAdjust,
+      this.sprite.y
+    );
+    const velocityX = facingLeft ? -20 : 20;
+
+    this.scene.events.emit("throw", position, velocityX);
   }
 
   private jumpOnUpdate() {
@@ -244,6 +288,11 @@ export default class PlayerController {
         this.sprite.setVelocityX(0);
         this.stateMachine.setState("idle");
       }
+    }
+
+    const fJustPressed = Phaser.Input.Keyboard.JustDown(this.cursors.f);
+    if (fJustPressed) {
+      this.throwSnowball();
     }
   }
 
@@ -373,6 +422,10 @@ export default class PlayerController {
     this.sprite.setPosition(x, y);
   }
 
+  //   getVelocity() {
+  //     return this.sprite.
+  //   }
+
   setVelocity(vx: number, vy: number) {
     this.sprite.setVelocity(vx,vy);
   }
@@ -394,6 +447,7 @@ export default class PlayerController {
         isDown: this.cursors.right.isDown,
       },
       space: this.cursors.space.isDown,
+      f: this.cursors.f.isDown,
     };
   }
 }

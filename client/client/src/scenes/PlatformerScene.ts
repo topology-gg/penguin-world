@@ -3,10 +3,16 @@ import ObstaclesController from "../controllers/ObstaclesController";
 import PlayerController from "../controllers/PlayerController";
 import type {
   Connection,
+  CursorKeys,
   PeerData,
   PeerMessage,
+  //resolutionMessageLite,
+  PeerResolutionMessage,
+  PositionContent,
+  ProjectileResolutionMessge,
+  ResolutionMessage,
+  State,
   platformerSceneData,
-  resolutionMessageLite,
 } from "./types";
 
 import config from "../config";
@@ -14,8 +20,11 @@ import CharacterController from "../controllers/Controller";
 import Whiteboard from "../gameObjects/whiteboard";
 import CRDT, { CRDT_STATE } from "../networking/crdt";
 import Media from "../networking/media";
-import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "../networking/messages/crdt";
-import { MessageType } from "./enums";
+import {
+  CRDT_CHAT_HISTORY_REMOTE,
+  CRDT_PEER_STATE,
+} from "../networking/messages/crdt";
+import { MessageType, ProjectileEvent } from "./enums";
 import { abs, sqrt } from "lib0/math";
 import * as Y from "yjs";
 
@@ -28,10 +37,16 @@ enum PEER_PRESENCE {
   LEFT = "left",
 }
 
+interface Snowball {
+  sprite: Phaser.Physics.Matter.Sprite;
+  id: number;
+}
+
 export default class Platformer extends Phaser.Scene {
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private cursors!: CursorKeys;
 
   private penquin?: Phaser.Physics.Matter.Sprite;
+  private snowballs: Snowball[] = [];
   private playerController?: PlayerController;
   private obstacles!: ObstaclesController;
 
@@ -64,7 +79,10 @@ export default class Platformer extends Phaser.Scene {
   }
 
   init(data: platformerSceneData) {
-    this.cursors = this.input.keyboard.createCursorKeys();
+    this.cursors = {
+      ...this.input.keyboard.createCursorKeys(),
+      f: this.input.keyboard.addKey("f"),
+    };
     this.obstacles = new ObstaclesController();
 
     this.connectedPlayers = data.peers;
@@ -112,6 +130,7 @@ export default class Platformer extends Phaser.Scene {
 
   preload() {
     this.load.atlas("penquin", "assets/penquin.png", "assets/penquin.json");
+    this.load.image("snowball", "assets/Snowball.png");
     this.load.image("tiles", "assets/sheet.png");
     this.load.tilemapTiledJSON("tilemap", "assets/game.json");
 
@@ -267,6 +286,7 @@ export default class Platformer extends Phaser.Scene {
           // https://brm.io/matter-js/docs/classes/Body.html#property_collisionFilter
           this.penquin.setCollisionGroup(-1);
 
+          this.events.addListener;
           this.playerController = new PlayerController(
             this,
             this.penquin,
@@ -274,6 +294,9 @@ export default class Platformer extends Phaser.Scene {
             this.obstacles,
             this.username
           );
+
+          this.events.addListener("throw", this.handleThrowEvent, this);
+          this.events.addListener("hit", this.handleHitEvent, this);
 
           this.cameras.main.startFollow(this.penquin, true);
           break;
@@ -299,44 +322,81 @@ export default class Platformer extends Phaser.Scene {
 
     this.crdt.aware();
     this.crdt.setUsername({ username: this.username });
-    this.crdt.observeGlobalState(
-        (globalState: Y.Map<CRDT_PEER_STATE>) => {
-            const myClientID = this.crdt.getClientID();
 
-            //
-            // Grab my message queue
-            //
-            const messages = globalState.get(myClientID.toString())?.messages;
-            if (messages === undefined) {
-                return;
+    this.crdt.observeGlobalState((globalState: Y.Map<CRDT_PEER_STATE>) => {
+      const myClientID = this.crdt.getClientID();
+
+      //
+      // Grab my message queue
+      //
+      const messages = globalState.get(myClientID.toString())?.messages;
+      if (messages === undefined) {
+          return;
+      }
+
+      //
+      // Process all of them sequentially
+      //
+      messages.forEach((msg: ResolutionMessage) => {
+        console.log("message", msg)
+        if ("update" in msg) {
+          const msgUpdate = msg.update;
+          const msgIsVelocityBased = msg.isVelocityBased;
+          if (!msgIsVelocityBased) {
+            // Position based collision resolution
+            this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
+          } else {
+            // Velocity based collision resolution
+            const force: Phaser.Math.Vector2 = new Phaser.Math.Vector2(
+              msgUpdate.x / 100,
+              msgUpdate.y / 100
+            );
+            this.playerController?.applyForce(force);
+          }
+        } else {
+          const msgObjectId = msg.objectId;
+          const msgUpdate = msg.projectileEvent;
+
+          if (msgUpdate === ProjectileEvent.SPAWN) {
+            const existiningSnowball = this.snowballs.find(
+              (snowball) => snowball.id === msgObjectId
+            );
+            if (existiningSnowball === undefined) {
+              const posX = msg.position.x;
+              const posY = msg.position.y;
+              const velocityX = msg.velocity.x;
+              const velocityY = msg.velocity.y;
+
+              const snowball = this.createSnowball(
+                posX,
+                posY,
+                velocityX,
+                velocityY,
+                msgObjectId
+              );
+
+              const newSnowball: Snowball = {
+                sprite: snowball,
+                id: msg.messageID,
+              };
+
+              this.snowballs.push(newSnowball);
             }
-
-            //
-            // Process all of them sequentially
-            //
-            messages.forEach((msg: resolutionMessageLite) => {
-                const msgUpdate = msg.update;
-                const msgIsVelocityBased = msg.isVelocityBased;
-
-                if (!msgIsVelocityBased) {
-                    // Position based collision resolution
-                    this.playerController?.setPosition(msgUpdate.x, msgUpdate.y);
-                } else {
-                    // Velocity based collision resolution
-                    // const force : Phaser.Math.Vector2 = new Phaser.Math.Vector2(msgUpdate.x / 100, msgUpdate.y /100);
-                    // this.playerController?.applyForce(force);
-                    // this.playerController?.setAnimState('bump');
-                    this.playerController?.setVelocity(msgUpdate.x, msgUpdate.y);
-                }
-            })
-
-            //
-            // Clear my message queue
-            //
-            this.crdt.clearMyMessageQueue();
-
+          } else if (msgUpdate === ProjectileEvent.DESPAWN) {
+            this.snowballs.forEach((snowball) => {
+              if (snowball.id === msg.messageID) {
+                snowball.sprite.destroy();
+              }
+            });
+          }
         }
-    );
+      });
+
+      //
+      // Clear my message queue
+      //
+      this.crdt.clearMyMessageQueue();
+    });
 
     this.crdt.observeChatHistoryRemote(
       (chatHistoryRemote: Array<CRDT_CHAT_HISTORY_REMOTE>) => {
@@ -388,6 +448,80 @@ export default class Platformer extends Phaser.Scene {
     });
   }
 
+  createSnowball(
+    x: number,
+    y: number,
+    velocityX: number,
+    velocityY: number,
+    messageId: number
+  ) {
+    const snowballCollisionGroup = -12;
+
+    const snowball = this.matter.add
+      .sprite(x, y, "snowball")
+      .setFixedRotation()
+      .setScale(0.05);
+
+    snowball.setCollisionGroup(snowballCollisionGroup);
+    snowball.setIgnoreGravity(true);
+    snowball.setVelocity(velocityX, velocityY);
+    snowball.setFriction(0, 0);
+    //Used to genereate valid DESPWAN events on collision
+    snowball.snowballId = messageId;
+
+    setTimeout(() => {
+      snowball.destroy();
+      this.snowballs = this.snowballs.filter((s) => s.id !== messageId);
+    }, 1000);
+
+    return snowball;
+  }
+  handleThrowEvent(positon: Phaser.Math.Vector2, velocityX: number) {
+    const { x, y } = positon;
+
+    const messageId = Date.now() * this.crdt.getClientID();
+    const snowball = this.createSnowball(x, y, velocityX, 0, messageId);
+    const newSnowball: Snowball = {
+      sprite: snowball,
+      id: messageId,
+    };
+    
+    this.snowballs.push(newSnowball);
+
+    const resolutionMessage: ProjectileResolutionMessge = {
+      messageID: messageId,
+      objectId: messageId,
+      projectileEvent: ProjectileEvent.SPAWN,
+      position: { x, y },
+      velocity: { x: velocityX, y: 0 },
+    };
+
+    const peers = this.crdt.getPeers();
+
+    for (const [peerClientID, peer] of peers) {
+      this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolutionMessage);
+    }
+    
+  }
+
+  handleHitEvent(snowballId: number) {
+    const resolutionMessage: ProjectileResolutionMessge = {
+      messageID: snowballId,
+      objectId: snowballId,
+      projectileEvent: ProjectileEvent.DESPAWN,
+      position: { x: 0, y: 0 },
+      velocity: { x: 0, y: 0 },
+    };
+
+    const peers = this.crdt.getPeers();
+
+    this.snowballs.find(s => s.id === snowballId)?.sprite.destroy();
+    
+    for (const [peerClientID, peer] of peers) {
+      this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolutionMessage);
+    }
+  }
+
   updatePeers(t: number, dt: number) {
     if (this.playerController !== undefined) {
       // Update my penguin.
@@ -411,7 +545,6 @@ export default class Platformer extends Phaser.Scene {
     const peers = this.crdt.getPeers();
 
     for (const [clientID, peer] of peers) {
-
       //
       // handle peer removal
       //
@@ -487,14 +620,84 @@ export default class Platformer extends Phaser.Scene {
     //
     const me = this.playerController;
     if (me !== undefined) {
-        const TOY_HITBOX_DIM = this.penquin!.displayWidth;
+      const TOY_HITBOX_DIM = this.penquin!.displayWidth;
 
-        for (const [peerClientID, peer] of peers) {
-            // get peer state
-            const state: State | undefined = peer.get(CRDT_STATE.STATE);
-            if (state === undefined) {
-                continue;
+      for (const [peerClientID, peer] of peers) {
+        // get peer state
+        const state: State | undefined = peer.get(CRDT_STATE.STATE);
+        if (state === undefined) {
+          continue;
+        }
+
+        // get coordinates of interest
+        const myPos = me.getPosition();
+        const myX = myPos.x;
+        const myY = myPos.y;
+        const theirPos = (state ? state.position : {x:0,y:0}) as PositionContent;
+        const theirX = theirPos.x;
+        const theirY = theirPos.y;
+
+        // check for overlap
+        const distanceX = abs(myX - theirX);
+        const distanceY = abs(myY - theirY);
+        const isOverlapped = (distanceX <= TOY_HITBOX_DIM) && (distanceY <= TOY_HITBOX_DIM);
+
+        // if overlap, send resolution message via crdt (use crdt as mailbox)
+        if (isOverlapped) {
+            console.log('isOverlapped!');
+
+            //
+            // calculate the magnitude of the displacement vector from them to me
+            //
+            const normalizationFactor = sqrt((myX - theirX)**2 + (myY - theirY)**2);
+            const normalizationFactorSafe = normalizationFactor == 0 ? 1 : normalizationFactor;
+
+            //
+            // calculate the normalised displacement vector from them to me
+            //
+            const normalizedDisplacementVectorMeMinusPeer = {
+                x: (myX - theirX)/normalizationFactorSafe,
+                y: (myY - theirY)/normalizationFactorSafe
+            };
+
+            //
+            // this coef resembles restitution coefficient
+            //
+            const RESOLVE_VEL_COEF = 6;
+
+            //
+            // calculate new velocities for myself and them for resolving the collision
+            //
+            const myNewVel = {
+                x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
+                y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
             }
+            const theirNewVel = {
+                x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF * -1,
+                y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF * -1,
+            }
+            
+            //
+            // don't send message to myself; act upon it immediately
+            //
+            const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(
+              myNewVel.x / 100,
+              myNewVel.y / 100
+            );
+            this.playerController?.applyForce(myForce);
+
+            //
+            // don't send message to myself; act upon it immediately
+            //
+            // const currAnimStateName = this.playerController?.getStateName() as string;
+            // if (currAnimStateName != 'bump') {
+            //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
+            //     this.playerController?.applyForce(myForce);
+            //     this.playerController?.setAnimState('bump');
+            //     // this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
+            // }
+            // this.playerController?.setAnimState('bump');
+            this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
 
             // get coordinates of interest
             const myPos = me.getPosition();
@@ -566,11 +769,10 @@ export default class Platformer extends Phaser.Scene {
                     isVelocityBased: true,
                 }
                 this.crdt.addResolutionMessageToPeerMessageQueue(peerClientID, resolveThemMessage);
-            }
         }
+      }
     }
 
-    
     const GAME_TICKS_TILL_POSITION_UPDATE = 1;
     if (this.lastPosBroadcast + GAME_TICKS_TILL_POSITION_UPDATE <= t) {
       this.connectedPlayers.forEach((connectedPlayer) => {

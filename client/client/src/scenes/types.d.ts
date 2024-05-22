@@ -1,7 +1,7 @@
 import SimplePeer from "simple-peer";
 import CRDT from "../networking/crdt";
 import Media from "../networking/media";
-import { MessageType } from "./enums";
+import { MessageType, ProjectileEvent } from "./enums";
 
 interface PeerMessage {
   content: string;
@@ -37,8 +37,8 @@ interface SimulatedCursor {
 }
 
 interface Vec2 {
-    x: number;
-    y: number;
+  x: number;
+  y: number;
 }
 
 interface PositionContent {
@@ -66,21 +66,23 @@ interface AudioContent {
   muted: boolean;
 }
 
-//
-// New types added to allow messaging over crdt via a queue
-//
-interface resolutionMessage {
-    messageID: number; // for each peer to keep track of which messageID of which queue is processed or yet to be processed
-    clientID: number;
-    update: Vec2;
-    isVelocityBased: boolean;
+interface ResolutionMessageBase {
+  messageID: number; // for each peer to keep track of which messageID of which queue is processed or yet to be processed
+  objectId: number; // Id of the peer being effected or the projectile
 }
 
-interface resolutionMessageLite {
-    messageID: number;
-    update: Vec2;
-    isVelocityBased: boolean;
+interface PeerResolutionMessage extends ResolutionMessageBase {
+  update: Vec2;
+  isVelocityBased: boolean;
 }
+
+interface ProjectileResolutionMessge extends ResolutionMessageBase {
+  projectileEvent: ProjectileEvent;
+  position: Vec2;
+  velocity: Vec2;
+}
+
+type ResolutionMessage = PeerResolutionMessage | ProjectileResolutionMessge;
 
 //
 // CRDT state interface
@@ -96,4 +98,10 @@ interface State {
 interface PeerData {
   type: MessageType;
   content: PositionContent | InputContent | string;
+}
+
+
+
+interface CursorKeys extends Phaser.Types.Input.Keyboard.CursorKeys {
+  f: Phaser.Input.Keyboard.Key;
 }
