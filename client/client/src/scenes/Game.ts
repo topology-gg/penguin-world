@@ -8,6 +8,7 @@ import DefaultButton from "../ui-components/defaultButton";
 
 export default class Demo extends Phaser.Scene {
   private username = "";
+  private inputText: InputText | undefined;
   private lobbyInputText: InputText | undefined;
   private removeSignalEvent: any = () => {};
 
@@ -34,6 +35,7 @@ export default class Demo extends Phaser.Scene {
         config.scale.width / 4 - 10,
         "large",
         () => {
+          this.username = this.inputText?.text || "";
           const lobbyName = this.lobbyInputText?.text || "";
           const crdt = new CRDT(lobbyName);
           const media = new Media(crdt.getClientID());
