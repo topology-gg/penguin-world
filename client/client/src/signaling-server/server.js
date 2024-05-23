@@ -39,8 +39,8 @@ const topics = new Map();
  * @param {object} message
  */
 const send = (conn, message) => {
+  if (conn === undefined) return;
   if (
-    conn !== undefined &&
     conn.readyState !== wsReadyStateConnecting &&
     conn.readyState !== wsReadyStateOpen
   ) {
