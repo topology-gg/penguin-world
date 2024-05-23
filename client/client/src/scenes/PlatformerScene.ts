@@ -136,66 +136,27 @@ export default class Platformer extends Phaser.Scene {
     const buttonY = config.scale.height / 2 - 100;
     const buttonSpacing = 50;
 
-    this.add
-      .text(buttonX, buttonY, "🚀", {
+    const emoteButtons = [
+      { text: "🚀", action: () => this.sendMessage("🚀") },
+      { text: "🍺", action: () => this.sendMessage("🍺") },
+      { text: "👀", action: () => this.sendMessage("👀") },
+      { text: "🌶️", action: () => this.sendMessage("🌶️") },
+      { text: "❄️", action: () => this.playerController?.throwSnowball() },
+    ];
 
-        fontSize: "32px",
-        backgroundColor: "#000",
-        color: "#fff",
-        padding: { x: 0, y: 5 },
-      })
-      .setInteractive()
-      .on("pointerdown", () => this.sendMessage("🚀"))
-      .setScrollFactor(0, 0)
-      .setDepth(1000);
-
-    this.add
-      .text(buttonX, buttonY + buttonSpacing, "🍺", {
-        fontSize: "32px",
-        backgroundColor: "#000",
-        color: "#fff",
-        padding: { x: 0, y: 5 },
-      })
-      .setInteractive()
-      .on("pointerdown", () => this.sendMessage("🍺"))
-      .setScrollFactor(0, 0)
-      .setDepth(1000);
-
-    this.add
-      .text(buttonX, buttonY + buttonSpacing * 2, "👀", {
-        fontSize: "32px",
-        backgroundColor: "#000",
-        color: "#fff",
-        padding: { x: 0, y: 5 },
-      })
-      .setInteractive()
-      .on("pointerdown", () => this.sendMessage("👀"))
-      .setScrollFactor(0, 0)
-      .setDepth(1000);
-
-    this.add
-      .text(buttonX, buttonY + buttonSpacing * 3, "🌶️", {
-        fontSize: "32px",
-        backgroundColor: "#000",
-        color: "#fff",
-        padding: { x: 0, y: 5 },
-      })
-      .setInteractive()
-      .on("pointerdown", () => this.sendMessage("🌶️"))
-      .setScrollFactor(0, 0)
-      .setDepth(1000);
-
-    this.add
-      .text(buttonX, buttonY + buttonSpacing * 4, "❄️", {
-        fontSize: "32px",
-        backgroundColor: "#000",
-        color: "#fff",
-        padding: { x: 0, y: 5 },
-      })
-      .setInteractive()
-      .on("pointerdown", () => this.playerController?.throwSnowball())
-      .setScrollFactor(0, 0)
-      .setDepth(1000);
+    emoteButtons.forEach((button, index) => {
+      this.add
+        .text(buttonX, buttonY + buttonSpacing * index, button.text, {
+          fontSize: "32px",
+          backgroundColor: "#000",
+          color: "#fff",
+          padding: { x: 0, y: 5 },
+        })
+        .setInteractive()
+        .on("pointerdown", button.action)
+        .setScrollFactor(0, 0)
+        .setDepth(1000);
+    });
   }
 
   renderMic() {
