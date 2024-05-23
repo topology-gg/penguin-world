@@ -7,11 +7,8 @@ import {
   State,
   TextContent,
   UsernameContent,
-  resolutionMessage,
-  resolutionMessageLite,
 } from "../scenes/types";
 import { CRDT_CHAT_HISTORY_REMOTE, CRDT_PEER_STATE } from "./messages/crdt";
-import { YMap } from "yjs/dist/src/internals";
 
 export enum CRDT_STATE {
   REMOVED = "REMOVED",
@@ -186,7 +183,7 @@ export default class CRDT {
         );
     }
 
-    addResolutionMessageToMyGlobalState (message: resolutionMessage) {
+    addResolutionMessageToMyGlobalState (message: any) {
         // grab my current message queue from crdt
         const myClientID = this.doc.clientID;
         let myCurrState = this.globalState.get(myClientID.toString());
@@ -200,7 +197,7 @@ export default class CRDT {
                 messages: []
             };
         }
-        const myCurrMessageQueue = myCurrState.messages as resolutionMessage[];
+        const myCurrMessageQueue = myCurrState.messages as any[];
 
         // push new message to queue
         const newMessageQueue = myCurrMessageQueue.concat([message]);
@@ -236,7 +233,7 @@ export default class CRDT {
         this.globalState.set(myClientID.toString(), emptyState);
     }
 
-    addResolutionMessageToPeerMessageQueue (clientID: number, message: resolutionMessageLite) {
+    addResolutionMessageToPeerMessageQueue (clientID: number, message: any) {
         // grab the target message queue from crdt
         let currState = this.globalState.get(clientID.toString());
         if (currState === undefined) {
@@ -249,7 +246,7 @@ export default class CRDT {
                 messages: []
             };
         }
-        const currMessageQueue = currState.messages as resolutionMessageLite[];
+        const currMessageQueue = currState.messages as any[];
 
         // push new message to queue
         const newMessageQueue = currMessageQueue.concat([message]);
