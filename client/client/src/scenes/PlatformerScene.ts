@@ -6,7 +6,6 @@ import type {
   CursorKeys,
   PeerData,
   PeerMessage,
-  //resolutionMessageLite,
   PeerResolutionMessage,
   PositionContent,
   ProjectileResolutionMessge,
@@ -708,15 +707,6 @@ export default class Platformer extends Phaser.Scene {
           //
           // don't send message to myself; act upon it immediately
           //
-          const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(
-            myNewVel.x / 100,
-            myNewVel.y / 100,
-          );
-          this.playerController?.applyForce(myForce);
-
-          //
-          // don't send message to myself; act upon it immediately
-          //
           // const currAnimStateName = this.playerController?.getStateName() as string;
           // if (currAnimStateName != 'bump') {
           //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
@@ -727,92 +717,18 @@ export default class Platformer extends Phaser.Scene {
           // this.playerController?.setAnimState('bump');
           this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
 
-          // get coordinates of interest
-          const myPos = me.getPosition();
-          const myX = myPos.x;
-          const myY = myPos.y;
-          const theirPos = (
-            state ? state.position : { x: 0, y: 0 }
-          ) as PositionContent;
-          const theirX = theirPos.x;
-          const theirY = theirPos.y;
-
-          // check for overlap
-          const distanceX = abs(myX - theirX);
-          const distanceY = abs(myY - theirY);
-          const isOverlapped =
-            distanceX <= TOY_HITBOX_DIM && distanceY <= TOY_HITBOX_DIM;
-
-          // if overlap, send resolution message via crdt (use crdt as mailbox)
-          if (isOverlapped) {
-            console.log("isOverlapped!");
-
-            //
-            // calculate the magnitude of the displacement vector from them to me
-            //
-            const normalizationFactor = sqrt(
-              (myX - theirX) ** 2 + (myY - theirY) ** 2,
-            );
-            const normalizationFactorSafe =
-              normalizationFactor == 0 ? 1 : normalizationFactor;
-
-            //
-            // calculate the normalised displacement vector from them to me
-            //
-            const normalizedDisplacementVectorMeMinusPeer = {
-              x: (myX - theirX) / normalizationFactorSafe,
-              y: (myY - theirY) / normalizationFactorSafe,
-            };
-
-            //
-            // this coef resembles restitution coefficient
-            //
-            const RESOLVE_VEL_COEF = 6;
-
-            //
-            // calculate new velocities for myself and them for resolving the collision
-            //
-            const myNewVel = {
-              x: normalizedDisplacementVectorMeMinusPeer.x * RESOLVE_VEL_COEF,
-              y: normalizedDisplacementVectorMeMinusPeer.y * RESOLVE_VEL_COEF,
-            };
-            const theirNewVel = {
-              x:
-                normalizedDisplacementVectorMeMinusPeer.x *
-                RESOLVE_VEL_COEF *
-                -1,
-              y:
-                normalizedDisplacementVectorMeMinusPeer.y *
-                RESOLVE_VEL_COEF *
-                -1,
-            };
-
-            //
-            // don't send message to myself; act upon it immediately
-            //
-            // const currAnimStateName = this.playerController?.getStateName() as string;
-            // if (currAnimStateName != 'bump') {
-            //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
-            //     this.playerController?.applyForce(myForce);
-            //     this.playerController?.setAnimState('bump');
-            //     // this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
-            // }
-            // this.playerController?.setAnimState('bump');
-            this.playerController?.setVelocity(myNewVel.x, myNewVel.y);
-
-            //
-            // put the peer resolution message in their mailbox
-            //
-            const resolveThemMessage: resolutionMessageLite = {
-              messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness; NOTE: BYZANTINE FAULT VULNERABLE!
-              update: theirNewVel,
-              isVelocityBased: true,
-            };
-            this.crdt.addResolutionMessageToPeerMessageQueue(
-              peerClientID,
-              resolveThemMessage,
-            );
-          }
+          //
+          // put the peer resolution message in their mailbox
+          //
+          const resolveThemMessage: resolutionMessageLite = {
+            messageID: Date.now() * peerClientID, // this messageID should be hash of things to guarantee uniqueness; NOTE: BYZANTINE FAULT VULNERABLE!
+            update: theirNewVel,
+            isVelocityBased: true,
+          };
+          this.crdt.addResolutionMessageToPeerMessageQueue(
+            peerClientID,
+            resolveThemMessage,
+          );
         }
       }
     }
