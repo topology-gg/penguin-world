@@ -258,7 +258,7 @@ export default class PlayerController {
     this.sprite.setVelocityY(-12);
   }
 
-  private throwSnowball() {
+  throwSnowball() {
     const facingLeft = this.sprite.flipX;
 
     const positionAdjust = facingLeft
