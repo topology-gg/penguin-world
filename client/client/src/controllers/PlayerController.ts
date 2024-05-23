@@ -258,7 +258,7 @@ export default class PlayerController {
     this.sprite.setVelocityY(-12);
   }
 
-  throwSnowball() {
+  private throwSnowball() {
     const facingLeft = this.sprite.flipX;
 
     const positionAdjust = facingLeft
@@ -358,6 +358,22 @@ export default class PlayerController {
   }
 
   handlePointerDown(pointer: Phaser.Input.Pointer) {
+    const emoteButtons = this.scene.children.list.filter(
+      (child) => child.type === "Text" && child.input && child.input.enabled,
+    );
+
+    const isEmoteButtonPressed = emoteButtons.some((button) =>
+      Phaser.Geom.Rectangle.Contains(
+        button.getBounds(),
+        pointer.x,
+        pointer.y,
+      ),
+    );
+
+    if (isEmoteButtonPressed) {
+      return;
+    }
+
     this.touchStartX = pointer.x;
     this.touchStartY = pointer.y;
     this.isTouching = true;
