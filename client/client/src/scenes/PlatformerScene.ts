@@ -194,6 +194,18 @@ export default class Platformer extends Phaser.Scene {
       .on("pointerdown", () => this.sendMessage("🌶️"))
       .setScrollFactor(0, 0)
       .setDepth(1000);
+
+    this.add
+      .text(buttonX, buttonY + buttonSpacing * 3, "❄️", {
+        fontSize: "32px",
+        backgroundColor: "#000",
+        color: "#fff",
+        padding: { x: 0, y: 5 },
+      })
+      .setInteractive()
+      .on("pointerdown", () => this.sendMessage("❄️"))
+      .setScrollFactor(0, 0)
+      .setDepth(1000);
   }
 
   renderMic() {
