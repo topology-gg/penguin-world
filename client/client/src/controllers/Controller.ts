@@ -27,10 +27,7 @@ const initCursor: SimulatedCursor = {
 };
 //CharacterController and PlayerController should share a base class
 export default class CharacterController {
-  private scene: Phaser.Scene;
   private sprite: Phaser.Physics.Matter.Sprite;
-
-  private obstacles: ObstaclesController;
 
   private stateMachine: StateMachine;
   private cursors: SimulatedCursor;
@@ -44,9 +41,7 @@ export default class CharacterController {
     obstacles: ObstaclesController,
     username: string
   ) {
-    this.scene = scene;
     this.sprite = sprite;
-    this.obstacles = obstacles;
     this.cursors = initCursor;
 
     this.createAnimations();

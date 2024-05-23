@@ -39,6 +39,7 @@ const topics = new Map();
  * @param {object} message
  */
 const send = (conn, message) => {
+  if (conn === undefined) return;
   if (
     conn.readyState !== wsReadyStateConnecting &&
     conn.readyState !== wsReadyStateOpen
@@ -110,13 +111,13 @@ const onConnection = (conn) => {
                   const topic = map.setIfUndefined(
                     topics,
                     topicName,
-                    () => new Set()
+                    () => new Set(),
                   );
                   topic.add(conn);
                   // add topic to conn
                   subscribedTopics.add(topicName);
                 }
-              }
+              },
             );
             break;
           case "unsubscribe":
@@ -126,7 +127,7 @@ const onConnection = (conn) => {
                 if (subs) {
                   subs.delete(conn);
                 }
-              }
+              },
             );
             break;
           case "publish":
@@ -149,7 +150,7 @@ const onConnection = (conn) => {
             break;
         }
       }
-    }
+    },
   );
 };
 

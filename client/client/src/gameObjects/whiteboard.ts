@@ -1,5 +1,4 @@
 import InputText from "phaser3-rex-plugins/plugins/inputtext";
-import RoundRectangle from "phaser3-rex-plugins/plugins/roundrectangle";
 import DefaultButton from "../ui-components/defaultButton";
 import IText from "phaser3-rex-plugins/plugins/gameobjects/dom/inputtext/InputText";
 import config from "../config";
@@ -9,16 +8,9 @@ export default class Whiteboard {
 
   private initializeWhiteboardBtn: DefaultButton;
 
-  private fullScreenButton: DefaultButton;
-  private exitFullScreenButton: DefaultButton;
-
   private shareInput: InputText;
-  private shareButton: InputText;
-
-  private background: RoundRectangle;
 
   private shareSession: any = () => {};
-  private exitFullScreen: any = () => {};
 
   private whiteboardLink: string = "https://excalidraw.com";
 

@@ -6,7 +6,6 @@ import type {
   CursorKeys,
   PeerData,
   PeerMessage,
-  PeerResolutionMessage,
   PositionContent,
   ProjectileResolutionMessge,
   ResolutionMessage,
@@ -54,19 +53,9 @@ export default class Platformer extends Phaser.Scene {
   private lastPosBroadcast: number = 0;
 
   private chatHistoryLocal: Array<string> = [];
-  private chatHistoryLocalPointer: number = 0;
   private chatHistoryRemotePointer: number | undefined = undefined;
-  private chatSaved: string = "";
-
-  private readonly COLOR_LIGHT = 0x24b5d2;
-  private readonly COLOR_DARK = 0x1184bf;
-  private readonly COLOR_CHAT = 0x508bc5;
-  private readonly COLOR_PRESENCE = 0xce70ee;
 
   private username: string;
-
-  private userMessages: PeerMessage[] = [];
-
   private whiteboard: Whiteboard;
 
   private crdt: CRDT;
@@ -147,8 +136,9 @@ export default class Platformer extends Phaser.Scene {
     const buttonY = config.scale.height / 2 - 100;
     const buttonSpacing = 50;
 
-    const helloButton = this.add
+    this.add
       .text(buttonX, buttonY, "🚀", {
+
         fontSize: "32px",
         backgroundColor: "#000",
         color: "#fff",
@@ -524,7 +514,7 @@ export default class Platformer extends Phaser.Scene {
 
     const peers = this.crdt.getPeers();
 
-    for (const [peerClientID, peer] of peers) {
+    for (const [peerClientID, _] of peers) {
       this.crdt.addResolutionMessageToPeerMessageQueue(
         peerClientID,
         resolutionMessage,
@@ -545,7 +535,7 @@ export default class Platformer extends Phaser.Scene {
 
     this.snowballs.find((s) => s.id === snowballId)?.sprite.destroy();
 
-    for (const [peerClientID, peer] of peers) {
+    for (const [peerClientID, _] of peers) {
       this.crdt.addResolutionMessageToPeerMessageQueue(
         peerClientID,
         resolutionMessage,
@@ -719,6 +709,7 @@ export default class Platformer extends Phaser.Scene {
           //
           // don't send message to myself; act upon it immediately
           //
+          
           // const currAnimStateName = this.playerController?.getStateName() as string;
           // if (currAnimStateName != 'bump') {
           //     const myForce: Phaser.Math.Vector2 = new Phaser.Math.Vector2(myNewVel.x / 100, myNewVel.y / 100);
@@ -790,15 +781,9 @@ export default class Platformer extends Phaser.Scene {
     this.chatHistoryLocal.push(content);
 
     this.playerController?.chat(content);
-    this.chatSaved = "";
-    this.chatHistoryLocalPointer = this.chatHistoryLocal.length;
   }
 
-  private initPeer(
-    x: number = 0,
-    y: number = 0,
-    username: string = "",
-  ): CharacterController {
+  private initPeer(username: string = ""): CharacterController {
     let penguin = this.matter.add.sprite(0, 0, "penquin").setFixedRotation();
 
     penguin.setCollisionGroup(-1);
