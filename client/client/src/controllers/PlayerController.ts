@@ -36,7 +36,7 @@ export default class PlayerController {
     sprite: Phaser.Physics.Matter.Sprite,
     cursors: CursorKeys,
     obstacles: ObstaclesController,
-    username: string
+    username: string,
   ) {
     this.scene = scene;
     this.sprite = sprite;
@@ -57,7 +57,8 @@ export default class PlayerController {
         },
         align: "center",
         maxLines: 5,
-      }
+        padding: { x: 0, y: 5 },
+      },
     );
     this.username = scene.add.text(
       sprite.x + USERNAME_X_OFFSET,
@@ -67,7 +68,7 @@ export default class PlayerController {
         color: "#F9DE04",
         fixedWidth: 150,
         align: "center",
-      }
+      },
     );
 
     this.stateMachine
@@ -100,35 +101,43 @@ export default class PlayerController {
 
       if (gameObject instanceof Phaser.Physics.Matter.TileBody) {
         // show coordinates of both objects
-        
-        const characterBottom = Math.floor(this.sprite.body.position.y - this.sprite.height / 2);
 
-        const characterLeft = this.sprite.body.position.x - this.sprite.width / 2;
-        const characterRight = this.sprite.body.position.x + this.sprite.width / 2;        
+        const characterBottom = Math.floor(
+          this.sprite.body.position.y - this.sprite.height / 2,
+        );
+
+        const characterLeft =
+          this.sprite.body.position.x - this.sprite.width / 2;
+        const characterRight =
+          this.sprite.body.position.x + this.sprite.width / 2;
 
         const tileTop = body.position.y - gameObject.tile.height / 2;
         const tileLeft = body.position.x - gameObject.tile.width / 2;
         const tileRight = body.position.x + gameObject.tile.width / 2;
 
-        const characterAboveTile = characterBottom <= tileTop && this.sprite.body.velocity.y >= 0
-        const characterLeftOfTile = characterRight - 10 <= tileLeft
-        const characterRightOfTile = characterLeft + 10 >= tileRight
+        const characterAboveTile =
+          characterBottom <= tileTop && this.sprite.body.velocity.y >= 0;
+        const characterLeftOfTile = characterRight - 10 <= tileLeft;
+        const characterRightOfTile = characterLeft + 10 >= tileRight;
 
-        if ((this.stateMachine.isCurrentState("jump") || this.stateMachine.isCurrentState("bump")) && (characterAboveTile || characterLeftOfTile || characterRightOfTile)) {
+        if (
+          (this.stateMachine.isCurrentState("jump") ||
+            this.stateMachine.isCurrentState("bump")) &&
+          (characterAboveTile || characterLeftOfTile || characterRightOfTile)
+        ) {
           this.stateMachine.setState("idle");
         }
         return;
       }
-      if(gameObject.snowballId) {
-        this.scene.events.emit("hit", gameObject.snowballId)
+      if (gameObject.snowballId) {
+        this.scene.events.emit("hit", gameObject.snowballId);
       }
-
     });
 
     // Add touch input handlers
-    this.scene.input.on('pointerdown', this.handlePointerDown, this);
-    this.scene.input.on('pointermove', this.handlePointerMove, this);
-    this.scene.input.on('pointerup', this.handlePointerUp, this);
+    this.scene.input.on("pointerdown", this.handlePointerDown, this);
+    this.scene.input.on("pointermove", this.handlePointerMove, this);
+    this.scene.input.on("pointerup", this.handlePointerUp, this);
   }
 
   setJumpThreshold(threshold: number) {
@@ -171,7 +180,11 @@ export default class PlayerController {
   }
 
   private idleOnUpdate() {
-    if (this.cursors.left.isDown || this.cursors.right.isDown || this.isTouching) {
+    if (
+      this.cursors.left.isDown ||
+      this.cursors.right.isDown ||
+      this.isTouching
+    ) {
       this.stateMachine.setState("walk");
     }
 
@@ -233,8 +246,6 @@ export default class PlayerController {
     }
   }
 
-
-
   private walkOnExit() {
     this.sprite.stop();
   }
@@ -255,7 +266,7 @@ export default class PlayerController {
       : 10 + this.sprite.width / 2;
     const position = new Phaser.Math.Vector2(
       this.sprite.x + positionAdjust,
-      this.sprite.y
+      this.sprite.y,
     );
     const velocityX = facingLeft ? -20 : 20;
 
@@ -346,26 +357,26 @@ export default class PlayerController {
     });
   }
 
-  handlePointerDown(pointer : Phaser.Input.Pointer) {
+  handlePointerDown(pointer: Phaser.Input.Pointer) {
     this.touchStartX = pointer.x;
     this.touchStartY = pointer.y;
     this.isTouching = true;
 
     this.moveEvent = this.scene.time.addEvent({
-      delay: 50, 
+      delay: 50,
       callback: this.updateMovement,
       callbackScope: this,
       loop: true,
     });
   }
 
-  handlePointerMove(pointer : Phaser.Input.Pointer) {
+  handlePointerMove(pointer: Phaser.Input.Pointer) {
     if (!this.isTouching) {
       return;
     }
 
     const deltaX = pointer.x - this.touchStartX;
-    const deltaY = this.touchStartY - pointer.y; 
+    const deltaY = this.touchStartY - pointer.y;
 
     if (deltaX < 0) {
       this.moveDirection = "left";
@@ -393,11 +404,20 @@ export default class PlayerController {
     const maxSpeed = 10;
 
     if (this.moveDirection === "left") {
-      const speed = Phaser.Math.Clamp(-maxSpeed * (this.touchStartX - this.scene.input.activePointer.x) / 10, -maxSpeed, maxSpeed);
+      const speed = Phaser.Math.Clamp(
+        (-maxSpeed * (this.touchStartX - this.scene.input.activePointer.x)) /
+          10,
+        -maxSpeed,
+        maxSpeed,
+      );
       this.sprite.flipX = true;
       this.sprite.setVelocityX(speed);
     } else if (this.moveDirection === "right") {
-      const speed = Phaser.Math.Clamp(maxSpeed * (this.scene.input.activePointer.x - this.touchStartX) / 10, -maxSpeed, maxSpeed);
+      const speed = Phaser.Math.Clamp(
+        (maxSpeed * (this.scene.input.activePointer.x - this.touchStartX)) / 10,
+        -maxSpeed,
+        maxSpeed,
+      );
       this.sprite.flipX = false;
       this.sprite.setVelocityX(speed);
     }
@@ -427,7 +447,7 @@ export default class PlayerController {
   //   }
 
   setVelocity(vx: number, vy: number) {
-    this.sprite.setVelocity(vx,vy);
+    this.sprite.setVelocity(vx, vy);
   }
 
   setAnimState(name: string) {
