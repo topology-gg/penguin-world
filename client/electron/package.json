@@ -15,7 +15,7 @@
     "build": "yarn copy && yarn app:dist"
   },
   "devDependencies": {
-    "electron": "^21.0.0",
+    "electron": "^22.3.25",
     "electron-builder": "^23.3.3"
   },
   "dependencies": {
